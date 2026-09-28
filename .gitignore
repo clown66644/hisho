@@ -27,8 +27,18 @@ local.properties
 *.keystore
 *.key
 *.pem
+*.p12
 .env
 .env.*
+secrets/
+credentials/
+
+# Database & Runtime
+*.db
+*.sqlite
+*.sqlite3
+backups/
+tmp/
 
 # Flutter & Dart
 .dart_tool/
