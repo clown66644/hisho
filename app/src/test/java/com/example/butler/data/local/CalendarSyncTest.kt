@@ -74,6 +74,27 @@ class CalendarSyncTest {
     }
 
     @Test
+    fun testDetectDuplicatesInvalidDurationReturnsEmpty() {
+        val baseTime = 1770000000000L
+        val event1 = CalendarEvent(
+            id = "ev-1",
+            title = "既存予定",
+            startTime = baseTime,
+            endTime = baseTime + 3600000L
+        )
+        syncManager.insertEvent(event1)
+
+        val invalidEvent = CalendarEvent(
+            id = "ev-invalid",
+            title = "既存予定",
+            startTime = baseTime + 1000L,
+            endTime = baseTime
+        )
+        val duplicates = syncManager.detectDuplicates(invalidEvent)
+        assertTrue(duplicates.isEmpty())
+    }
+
+    @Test
     fun testCalendarCommandsExecutionAndUndo() = runBlocking {
         val baseTime = 1770000000000L
         val event = CalendarEvent(

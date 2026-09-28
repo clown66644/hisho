@@ -259,6 +259,84 @@ class UndoManagerTest {
     }
 
     @Test
+    fun failedOperationIdCannotBeReusedForDifferentTarget() = runBlocking {
+        assertRejectedRetry(OperationStatus.FAILED)
+    }
+
+    @Test
+    fun partialOperationIdCannotBeReusedForDifferentTarget() = runBlocking {
+        assertRejectedRetry(OperationStatus.PARTIAL_SUCCESS)
+    }
+
+    private suspend fun assertRejectedRetry(status: OperationStatus) {
+        val original = history("bound-operation", "original-target")
+        assertFalse(manager.executeCommand(MapCommand(
+            original, store, executeResults = ArrayDeque(listOf(status)),
+        )))
+        val saved = store.histories[original.id]
+        val conflicting = MapCommand(original.copy(targetId = "other-target"), store)
+
+        assertFalse(manager.executeCommand(conflicting))
+
+        assertEquals(0, conflicting.executeCount)
+        assertTrue(store.targetValues.isEmpty())
+        assertEquals(saved, store.histories[original.id])
+        assertFalse(manager.canUndo())
+        assertFalse(manager.canRedo())
+    }
+
+    @Test
+    fun failedOperationIdIsBoundToActionAndBothSnapshots() = runBlocking {
+        val original = history("bound-payload").copy(
+            previousStateJson = "{\"value\":0}", newStateJson = "{\"value\":1}",
+        )
+        assertFalse(manager.executeCommand(MapCommand(
+            original, store, executeResults = ArrayDeque(listOf(OperationStatus.FAILED)),
+        )))
+        val saved = store.histories[original.id]
+        for (changed in listOf(
+            original.copy(actionType = "DELETE_TODO"),
+            original.copy(previousStateJson = "{\"value\":2}"),
+            original.copy(newStateJson = "{\"value\":3}"),
+        )) {
+            val conflicting = MapCommand(changed, store)
+            assertFalse(manager.executeCommand(conflicting))
+            assertEquals(0, conflicting.executeCount)
+            assertEquals(saved, store.histories[original.id])
+        }
+        assertTrue(store.targetValues.isEmpty())
+    }
+
+    @Test
+    fun transactionRechecksFailedOperationIdentityWithoutChangingHistory() = runBlocking {
+        val original = history("transaction-conflict", "original-target")
+        assertFalse(manager.executeCommand(MapCommand(
+            original, store, executeResults = ArrayDeque(listOf(OperationStatus.FAILED)),
+        )))
+        val saved = store.histories[original.id]
+        // Simulate a history committed by another manager after the initial read.
+        var firstRead = true
+        val staleReader = object : OperationHistoryDao by store {
+            override suspend fun getHistoryById(id: String): OperationHistoryEntity? {
+                if (firstRead) {
+                    firstRead = false
+                    return null
+                }
+                return store.getHistoryById(id)
+            }
+        }
+        val otherManager = UndoManager(staleReader, store) { ++now }
+        val conflicting = MapCommand(original.copy(targetId = "other-target"), store)
+
+        assertFalse(otherManager.executeCommand(conflicting))
+
+        assertEquals(0, conflicting.executeCount)
+        assertEquals(saved, store.histories[original.id])
+        assertTrue(store.targetValues.isEmpty())
+        assertFalse(otherManager.canUndo())
+    }
+
+    @Test
     fun undoSuccessKeepsDataHistoryAndStacksConsistent() = runBlocking {
         val command = MapCommand(history("undo-success"), store)
         assertTrue(manager.executeCommand(command))

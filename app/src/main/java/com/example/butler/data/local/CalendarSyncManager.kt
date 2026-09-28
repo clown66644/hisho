@@ -197,6 +197,9 @@ class CalendarSyncManager(
      * 重複・時間帯の重複する予定を検出する。
      */
     fun detectDuplicates(event: CalendarEvent): List<CalendarEvent> {
+        if (event.endTime <= event.startTime) {
+            return emptyList()
+        }
         val existing = getEvents(event.startTime - 60000, event.endTime + 60000)
         return existing.filter { other ->
             other.id != event.id && (

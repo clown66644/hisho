@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.butler.domain.logic.UndoManagerTest" tests="26" skipped="0" failures="0" errors="0" timestamp="2026-09-28T19:01:17" hostname="DESKTOP-RD4Q8IJ" time="0.25">
+  <properties/>
+  <testcase name="failedOperationIdCannotBeReusedForDifferentTarget" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.007"/>
+  <testcase name="commandSuccessAndHistoryCommitTogether" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.002"/>
+  <testcase name="concurrentManagersUndoSameOperationOnlyOnce" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.081"/>
+  <testcase name="staleManagerCannotReviveInvalidatedRedoBranch" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.005"/>
+  <testcase name="failedOperationIdIsBoundToActionAndBothSnapshots" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="partialOperationIdCannotBeReusedForDifferentTarget" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="undoFailureRollsBackDataAndRemainsRetryable" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="commandFailureRollsBackTargetAndLeavesNoSuccessHistory" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="partialResultAndCompensationAreRecorded" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.002"/>
+  <testcase name="undoHistoryWriteFailureRollsBackAndPreservesUndoStack" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.002"/>
+  <testcase name="transactionRechecksFailedOperationIdentityWithoutChangingHistory" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.002"/>
+  <testcase name="redoSuccessAndFailurePreserveConsistency" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.002"/>
+  <testcase name="multipleCommandsUndoInReverseOrder" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="undoneOperationIdIsNotReportedAsApplied" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="historyWriteFailureRollsBackOnlyTargetMutation" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.0"/>
+  <testcase name="duplicateSuccessfulOperationIdExecutesOnce" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="undoSuccessKeepsDataHistoryAndStacksConsistent" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="restartRestoresSameTimestampCommandsInExecutionOrder" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.006"/>
+  <testcase name="concurrentManagersExecuteSameOperationIdOnlyOnce" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.058"/>
+  <testcase name="reusedOperationIdWithDifferentTargetIsRejected" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.001"/>
+  <testcase name="corruptedOrUnknownHistoryIsNeverExecutedDuringRestore" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.003"/>
+  <testcase name="newCommandInvalidatesPersistedRedoBranch" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.002"/>
+  <testcase name="delayedFailureRecordCannotOverwriteNewerSuccess" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.057"/>
+  <testcase name="successfulRetryGetsOrderOfSuccessfulExecution" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.003"/>
+  <testcase name="restoredManagerCanUndoAfterRestart" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.003"/>
+  <testcase name="dbOnlyRollbackIsRecordedAsFailedRatherThanPartialSuccess" classname="com.example.butler.domain.logic.UndoManagerTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

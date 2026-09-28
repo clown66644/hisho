@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.butler.data.remote.OpenAiClientTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-09-28T19:01:16" hostname="DESKTOP-RD4Q8IJ" time="0.207">
+  <properties/>
+  <testcase name="errorResponseBodyAndApiKeyAreNotExposed" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.08"/>
+  <testcase name="successfulResponseIsParsedAndPrivacyFlagsAreSent" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.09"/>
+  <testcase name="responseWithoutStatusIsRejectedInNormalMode" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.0"/>
+  <testcase name="serviceFailureRetriesOnlyOnce" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.009"/>
+  <testcase name="structuredOutputRequiresValidOperationIdBeforeNetwork" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.001"/>
+  <testcase name="invalidSafetyIdentifierStopsBeforeNetwork" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.01"/>
+  <testcase name="exceptionDetailsAreNotExposed" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.001"/>
+  <testcase name="transientNetworkFailureRetriesOnceWithSameRequestId" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.004"/>
+  <testcase name="credentialProviderFailureIsConvertedToSafeError" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.003"/>
+  <testcase name="authenticationAndRateLimitFailuresAreNotRetried" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.0"/>
+  <testcase name="mismatchedStructuredOperationIdIsRejected" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.001"/>
+  <testcase name="structuredOutputUsesStrictResponsesApiSchemaAndExtractsAction" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.003"/>
+  <testcase name="refusalResponseIsRejectedWithoutExposingRefusalText" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.001"/>
+  <testcase name="incompleteStructuredResponseIsRejectedEvenWithOutputText" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.0"/>
+  <testcase name="safetyIdentifierProviderFailureStopsBeforeNetwork" classname="com.example.butler.data.remote.OpenAiClientTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

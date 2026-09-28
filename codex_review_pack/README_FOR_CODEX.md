@@ -1,5 +1,9 @@
 # Codex レビュー用ファイルパック
 
+> 2026-09-29 再監査: 正式ソースはこのパックの `app/src` のみです。
+> `app/app` および親フォルダの別アプリは対象外です。フェーズ1全体・カレンダー・ペルソナは未完了。
+> 最新の判定は [改修結果](docs/CODEX_REVIEW_RESULT_2026-09-29_REMEDIATION.md) と `AGENTS.md` を参照してください。
+
 本フォルダ (`codex_review_pack`) は、Codex によるコードレビューおよび安全性確認のために必要なドキュメントおよびソースコードを取りまとめたものです。
 
 ---
@@ -46,4 +50,3 @@ codex_review_pack/
    - SQLCipher による Room データベースパスフレーズ暗号化が安全かつ正常に設定されているか。
 4. **ChatGPT API クライアント & ペルソナ (`OpenAiClient.kt`, `PersonaPrompts.kt`)**
    - APIキーや会話内容が不意にログやエラー文に露出しない設計になっているか。
-

@@ -214,6 +214,22 @@ class AiStructuredActionTest {
         }
     }
 
+    @Test
+    fun unimplementedCalendarActionsNeverBecomeSuccessfulNoOpCommands() {
+        for (action in listOf("CREATE_EVENT", "UPDATE_EVENT", "DELETE_EVENT")) {
+            assertThrows(IllegalArgumentException::class.java) {
+                converter.convertJsonToCommand(validJson("op_calendar_001", action))
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                converter.convertJsonToCommand(
+                    """{"operationId":"op_calendar_002","actionType":"$action","payload":{},"rationale":null}""",
+                )
+            }
+        }
+        assertTrue(store.todos.isEmpty())
+        assertTrue(store.histories.isEmpty())
+    }
+
     private fun validJson(
         operationId: String,
         actionType: String = "CREATE_TODO",

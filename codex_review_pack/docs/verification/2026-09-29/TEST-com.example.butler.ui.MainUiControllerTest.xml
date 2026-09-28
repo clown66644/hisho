@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.butler.ui.MainUiControllerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-28T19:01:17" hostname="DESKTOP-RD4Q8IJ" time="0.03">
+  <properties/>
+  <testcase name="createUndoAndRedoAlwaysReflectDatabaseState" classname="com.example.butler.ui.MainUiControllerTest" time="0.025"/>
+  <testcase name="duplicateOperationDoesNotDuplicateUiCard" classname="com.example.butler.ui.MainUiControllerTest" time="0.002"/>
+  <testcase name="restartRestoresUndoTargetFromEncryptedStoreContract" classname="com.example.butler.ui.MainUiControllerTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

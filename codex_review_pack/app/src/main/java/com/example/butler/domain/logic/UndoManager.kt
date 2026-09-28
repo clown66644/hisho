@@ -46,6 +46,10 @@ class UndoManager(
 
     suspend fun executeCommand(command: Command): Boolean = stateMutex.withLock {
         val existing = safelyRead(command.history.id)
+        // 失敗・部分成功の履歴も、IDを最初の要求に固定する。
+        if (existing != null && !isSameOperation(existing, command.history)) {
+            return@withLock false
+        }
         if (existing?.status == OperationStatus.SUCCESS) {
             // 同一IDでも内容が異なる要求や、利用者がUndo済みの操作は成功扱いしない。
             return@withLock !existing.isUndone && isSameOperation(existing, command.history)
@@ -61,6 +65,9 @@ class UndoManager(
                 // Managerが複数存在しても、同じDBトランザクション内で再確認して
                 // 成功済み操作の外部副作用を二重実行しない。
                 val current = historyDao.getHistoryById(command.history.id)?.toDomainModel()
+                if (current != null && !isSameOperation(current, command.history)) {
+                    throw OperationIdConflict()
+                }
                 if (current?.status == OperationStatus.SUCCESS) {
                     alreadyCompletedInTransaction =
                         !current.isUndone && isSameOperation(current, command.history)
@@ -93,6 +100,9 @@ class UndoManager(
                 // 新規操作が成功した時点で、以前のRedo分岐は永続的にも無効化する。
                 historyDao.invalidateRedoHistories(clock())
             }
+        } catch (_: OperationIdConflict) {
+            // 競合は新たな実行失敗ではない。元の要求の監査履歴を変更しない。
+            return@withLock false
         } catch (_: Exception) {
             val compensation = if (commandStarted) {
                 safelyCompensate(command, OperationPhase.EXECUTE)
@@ -317,7 +327,9 @@ class UndoManager(
                 val current = historyDao.getHistoryById(base.id)?.toDomainModel()
                 // 補償処理中に別Managerが成功・Undo・Redoを確定した場合、
                 // 遅れて到着した失敗記録で新しい状態を巻き戻さない。
-                if (current != null && hasStateChangedSince(base, current)) return@run
+                if (current != null &&
+                    (!isSameOperation(base, current) || hasStateChangedSince(base, current))
+                ) return@run
                 if (current == null && phase != OperationPhase.EXECUTE) return@run
                 val orderedFailure = if (current == null) {
                     failed.copy(operationOrder = historyDao.getNextOperationOrder())

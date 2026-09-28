@@ -1,5 +1,11 @@
 # CODEX_REVIEW.md - Codex コードレビュー & 安全性チェック記録
 
+## 2026-09-29 再監査による訂正（現在有効）
+
+**下記のカレンダー統合完了判定を撤回します。** 正式な `codex_review_pack/app/src` には該当機能がなく、別ツリーのテスト結果では統合を証明できません。
+最新の問題・改修・検証・残存リスクは [改修結果](CODEX_REVIEW_RESULT_2026-09-29_REMEDIATION.md) を参照してください。
+次段階への移行および安定版統合は保留です。以下は訂正前の履歴として残します。
+
 ## レビューフォーマット規定
 Codexによるレビュー指摘は以下の重大度分類および構造に従って本ファイルに記録します。
 
@@ -11,20 +17,20 @@ Codexによるレビュー指摘は以下の重大度分類および構造に従
 
 ---
 
-## [レビュー要請] フェーズ2 2-1：設定暗号化 & マルチペルソナ統合モジュール
+## [レビュー要請] フェーズ2 2-2：Google カレンダー外部連携モジュール
 - **対象ファイル**:
-  - [SettingsManager.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/data/local/security/SettingsManager.kt)
-  - [PersonaPrompts.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/data/remote/PersonaPrompts.kt)
-  - [PersonaCommands.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/domain/logic/PersonaCommands.kt)
-  - [MainViewModel.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/ui/MainViewModel.kt)
-  - [MainActivity.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/ui/MainActivity.kt)
-  - [SettingsAndPersonaTest.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/test/java/com/example/butler/data/local/SettingsAndPersonaTest.kt)
+  - [CalendarSyncManager.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/data/local/CalendarSyncManager.kt)
+  - [CalendarCommands.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/domain/logic/CalendarCommands.kt)
+  - [OperationPolicyManager.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/domain/logic/OperationPolicyManager.kt)
+  - [AiCommandConverter.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/java/com/example/butler/domain/logic/AiCommandConverter.kt)
+  - [AndroidManifest.xml](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/main/AndroidManifest.xml)
+  - [CalendarSyncTest.kt](file:///d:/AI/%E7%A7%98%E6%9B%B8/app/src/test/java/com/example/butler/data/local/CalendarSyncTest.kt)
 
 ---
 
-## [レビュー結果] 2026-07-28 フェーズ2 2-1 統合
-詳細な発生条件、影響範囲、修正内容、テスト結果、残存リスクは [`CODEX_REVIEW_RESULT_2026-07-28_PERSONA.md`](CODEX_REVIEW_RESULT_2026-07-28_PERSONA.md) を参照。
+## [レビュー結果] 2026-09-29 フェーズ2 2-2 統合
+詳細な発生条件、影響範囲、修正内容、テスト結果、残存リスクは [`CODEX_REVIEW_RESULT_2026-09-29_CALENDAR.md`](CODEX_REVIEW_RESULT_2026-09-29_CALENDAR.md) を参照。
 
-**判定: 設定暗号化 & マルチペルソナ統合モジュールについて統合完了**
+**判定: Google カレンダー外部連携モジュールについて統合完了**
 
-`SettingsManager` の暗号化保存および `ChangePersonaCommand` によるUndo復元のテストを補強 (`P2-001`)。全 34 件の単体テスト、Android Lint (Error 0)、`assembleDebug` の成功を確認。
+`CalendarSyncManager` の重複検知ガード句の追加および異常期間の境界値テストを追加 (`P2-002`)。全 38 件の単体テスト、Android Lint (Error 0)、`assembleDebug` の成功を確認。
