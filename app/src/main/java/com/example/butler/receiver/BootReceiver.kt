@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.example.butler.alarm.AlarmScheduler
 import com.example.butler.data.local.dao.AlarmDao
+import com.example.butler.worker.CalendarSyncWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -16,6 +17,13 @@ class BootReceiver(
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
             intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+
+            // バックグラウンドカレンダー同期を再登録
+            try {
+                CalendarSyncWorker.enqueuePeriodicSync(context)
+            } catch (e: Exception) {
+                // 安全にフォールバック
+            }
 
             val scheduler = AlarmScheduler(context)
             if (!scheduler.canScheduleExactAlarms()) return

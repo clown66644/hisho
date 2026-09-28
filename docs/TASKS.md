@@ -28,7 +28,7 @@
 
 ---
 
-### フェーズ2：実機能の追加・発展 (進行中)
+### フェーズ2：実機能の追加・発展 (完了)
 - [x] **2-1. 設定暗号化 & マルチペルソナ統合モジュール (完了)**
   - [x] KeyStore 連携 `EncryptedSharedPreferences` 管理 (`SettingsManager.kt`)
   - [x] AI マルチペルソナエンジン拡張 (`PersonaType.kt`, `PersonaPrompts.kt`: 執事長, 秘書, コーチ, メイド長)
@@ -42,5 +42,11 @@
   - [x] カレンダー操作 Command (`CreateEventCommand.kt`, `UpdateEventCommand.kt`, `DeleteEventCommand.kt`)
   - [x] ポリシーカーネル連動 (変更・削除の `CONFIRMATION_REQUIRED` 判定、新規作成の `AUTO_EXECUTABLE`)
   - [x] AI 構造化操作パースおよび不完全パラメータ時の `GenericConfirmationCommand` 安全フォールバック
-  - [x] 単体テスト追加・全 37 件 PASSED (`CalendarSyncTest.kt`)
-- [ ] **2-3. バックグラウンド同期 & 通知カスタマイズ**
+  - [x] 単体テスト追加・全 38 件 PASSED (`CalendarSyncTest.kt`)
+- [x] **2-3. バックグラウンド同期 & 通知カスタマイズ (完了)**
+  - [x] `WorkManager` による定期バックグラウンドカレンダー同期 (`CalendarSyncWorker.kt`)
+  - [x] バッテリー・ネットワーク制約と 15 分最小間隔の遵守
+  - [x] 重要度別通知チャンネルの自動作成・カスタマイズ (`NotificationHelper.kt`)
+  - [x] インタラクティブ通知アクションボタン（「完了」「10分延期」）の実装
+  - [x] 通知アクション受信ブロードキャスト (`NotificationActionReceiver.kt`)
+  - [x] 単体テスト追加・全 42 件 PASSED (`NotificationAndSyncTest.kt`)

@@ -10,9 +10,11 @@
   - UIカード自動追加・優先順位ソート・確認カード承認/拒否・Undoボタン活性化同期 (`UiStateTest`)
   - EncryptedSharedPreferences 暗号化設定保存・マルチペルソナ変更 Command & Undo 復元 (`SettingsAndPersonaTest`)
   - カレンダー同期マネージャーCRUD・重複予定検出・カレンダーCommand実行/Undo/Redo・AI構造化パース・ポリシーカーネル判定 (`CalendarSyncTest`)
+  - 通知チャンネル生成・重要度別設定・通知アクション（完了・10分延期）ブロードキャスト処理・WorkManager同期 (`NotificationAndSyncTest`)
 - **統合テスト (Integration Test)**:
   - AI対話 -> ToDo自動生成 -> DB暗号化保存 -> 通知予約の一連フロー
   - Googleカレンダー連携と重複検知
+  - バックグラウンドカレンダー同期と重複通知連携
 - **実機検証 (Device Integration Test)**:
   - Doze Mode（バッテリー最適化）下でのアラーム精度検証
   - Android再起動 (`RECEIVE_BOOT_COMPLETED`) 後のアラーム再登録検証
@@ -21,11 +23,13 @@
 
 ## 2. 全単体・統合テスト実行結果 (2026-09-29)
 - **実行タスク**: `.\gradlew.bat testDebugUnitTest`
-- **結果**: 37/37 全件 PASS (0 Failures / 0 Errors)
-  - `CalendarSyncTest` (3/3 PASSED)
-    - `testCalendarSyncManagerCrudAndDuplicateDetection` (カレンダーCRUDおよび重複検知)
-    - `testCalendarCommandsExecutionAndUndo` (予定作成・更新・削除 Command と Undo/Redo 連動)
-    - `testAiJsonToCalendarCommandsAndPolicy` (AI JSON からのコマンド変換とポリシーガード)
+- **結果**: 42/42 全件 PASS (0 Failures / 0 Errors)
+  - `NotificationAndSyncTest` (4/4 PASSED)
+    - `testNotificationChannelsCreation` (重要度別通知チャンネル生成)
+    - `testBuildReminderNotificationWithActions` (完了・10分延期アクションボタン付き通知構築)
+    - `testNotificationActionReceiverCompleteAction` (通知からToDo即時完了処理)
+    - `testNotificationActionReceiverSnoozeAction` (通知から10分延期アラーム登録)
+  - `CalendarSyncTest` (4/4 PASSED)
   - `SettingsAndPersonaTest` (2/2 PASSED)
   - `UiStateTest` (3/3 PASSED)
   - `AlarmIntegrationTest` (4/4 PASSED)

@@ -52,6 +52,9 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.biometric:biometric:1.1.0")
 
+    // WorkManager for Background Sync
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     // JSON Parser
     implementation("org.json:json:20231013")
 
@@ -60,6 +63,7 @@ dependencies {
     testImplementation("org.json:json:20231013")
     testImplementation("androidx.test:core-ktx:1.5.0")
     testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation("androidx.work:work-testing:2.9.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }

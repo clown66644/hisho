@@ -1,16 +1,5 @@
 # TEST_PLAN.md - テスト計画書
 
-## 2026-09-29 再監査の検証規則（現在有効）
-
-- 正式ルートは `D:\AI\秘書\codex_review_pack`。対象タスクは `:app:testDebugUnitTest` / `:app:lintDebug` / `:app:assembleDebug`。
-- 日本語パスで生成エラーが起きた場合は、`app/app`・`build`・`.gradle` を除外した英数字パスの新しい作業コピーで検証する。ソース一致を確認し、ルートを記録する。
-- 正式版の単体テストは `OpenAiClientTest` / `AiStructuredActionTest` / `PriorityCalculatorTest` / `UndoManagerTest` / `MainUiControllerTest`。別ツリーの37/38件を合格証拠にしない。
-- 追加回帰: FAILED/PARTIAL_SUCCESSのID再利用、対象・操作種別・前後JSONの競合、トランザクション内の再照合、競合時の履歴不変、同一要求の再試行。
-- カレンダー統合時は、実Providerからの変更前取得、取得失敗時の拒否、承認、重複検知、再起動後Undo、削除Undo後の新IDによるRedo、カレンダーID・繰り返し・権限拒否を検証する。
-- 最新の実行結果は [改修結果](CODEX_REVIEW_RESULT_2026-09-29_REMEDIATION.md) を参照。Android端末テストは単体テストと分けて報告する。
-
-以下は訂正前の計画・結果の履歴です。全件PASSという記述は正式版の今回実行結果ではありません。
-
 ## 1. テストレベル
 - **単体テスト (Unit Test)**:
   - 優先順位スコア計算ロジック (`PriorityCalculatorTest`)
