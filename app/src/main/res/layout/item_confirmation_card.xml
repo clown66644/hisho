@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/confirm_bg"
+    android:padding="14dp"
+    android:layout_marginBottom="10dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="⚠️ 執事からの確認提案"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="@color/accent_light" />
+
+    <TextView
+        android:id="@+id/tvConfirmTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="操作の確認"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:layout_marginTop="4dp" />
+
+    <TextView
+        android:id="@+id/tvConfirmDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="この操作を実行してもよろしいですか？"
+        android:textSize="13sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginTop="4dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+
+        <Button
+            android:id="@+id/btnApprove"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="承認 (実行)"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/approve_green"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btnReject"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="拒否 (破棄)"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/reject_red"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+</LinearLayout>

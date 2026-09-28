@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/butler_background"
+    android:padding="16dp">
+
+    <!-- Header & Persona Selector Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/tvHeaderTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AI 執事ダッシュボード"
+            android:textColor="@color/butler_text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/rgPersonaSelector"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <RadioButton
+                android:id="@+id/rbPersonaButler"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="執事"
+                android:checked="true"
+                android:textColor="@color/butler_text_primary" />
+
+            <RadioButton
+                android:id="@+id/rbPersonaSecretary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="秘書"
+                android:textColor="@color/butler_text_primary" />
+
+            <RadioButton
+                android:id="@+id/rbPersonaCoach"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="コーチ"
+                android:textColor="@color/butler_text_primary" />
+        </RadioGroup>
+    </LinearLayout>
+
+    <!-- Cards List -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvCards"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp" />
+
+    <!-- Control Bar (Undo / Redo) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="8dp">
+
+        <Button
+            android:id="@+id/btnUndo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Undo (元に戻す)"
+            android:enabled="false"
+            android:backgroundTint="@color/butler_card_bg"
+            android:textColor="@color/butler_text_primary" />
+
+        <Space
+            android:layout_width="8dp"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/btnRedo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Redo (やり直す)"
+            android:enabled="false"
+            android:backgroundTint="@color/butler_card_bg"
+            android:textColor="@color/butler_text_primary" />
+    </LinearLayout>
+
+    <!-- AI Chat Input Box -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="8dp">
+
+        <EditText
+            android:id="@+id/etMessageInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="指示や質問を入力 (例: ToDo作成)"
+            android:textColor="@color/butler_text_primary"
+            android:textColorHint="@color/butler_text_secondary"
+            android:background="@drawable/bg_input_field"
+            android:padding="12dp" />
+
+        <Button
+            android:id="@+id/btnSend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="送信"
+            android:layout_marginStart="8dp"
+            android:backgroundTint="@color/butler_card_bg"
+            android:textColor="@color/butler_text_primary" />
+    </LinearLayout>
+
+</LinearLayout>

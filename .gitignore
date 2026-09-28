@@ -1,0 +1,44 @@
+# Gradle files
+.gradle/
+build/
+/*/build/
+*/*/build/
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Local configuration file (SDK path, etc.)
+local.properties
+
+# Log files
+*.log
+
+# Built artifacts
+*.apk
+*.aab
+*.aar
+*.jar
+
+# Signing keys & secrets
+*.jks
+*.keystore
+*.key
+*.pem
+.env
+.env.*
+
+# Flutter & Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

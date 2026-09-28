@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- 暗号化DBファイル(DB/Journal/WAL/SHM)およびEncryptedSharedPreferencesをバックアップから完全排除 -->
+    <exclude domain="database" path="encrypted_butler.db" />
+    <exclude domain="database" path="encrypted_butler.db-journal" />
+    <exclude domain="database" path="encrypted_butler.db-wal" />
+    <exclude domain="database" path="encrypted_butler.db-shm" />
+    <exclude domain="sharedpref" path="secret_db_key_prefs.xml" />
+    <exclude domain="sharedpref" path="secret_butler_prefs.xml" />
+</full-backup-content>
