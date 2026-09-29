@@ -1,11 +1,28 @@
 # TASKS.md - タスク管理・進捗状況
 
 ## 現在のフェーズ
-**フェーズ2 是正：Source of Truth 統合 & P0/P1 是正 Sprint (完了)**
+**フェーズ2 是正：Persistence / Undo / CI Reliability Remediation Sprint (完了)**
 
 ---
 
 ## 直近完了スプリント
+### Persistence / Undo / CI Reliability Remediation Sprint (2026-09-29)
+- [x] H-001: `.gitignore` に `!gradle/wrapper/gradle-wrapper.jar` を追加し、GitHub Actions CI のラッパー欠落エラーを解消
+- [x] H-002: `MainViewModel.Factory` で `OperationHistoryDao` を `UndoManager` に配線し、起動時に `initialize()` で復元
+- [x] H-003: 暗号化 DB 初期化失敗時の Fail-closed 徹底（インメモリ・平文フォールバックを排除し、安全に操作拒否）
+- [x] H-004: `DeleteEventCommand` で `redo()` をオーバーライドし、復元後の新しい Provider ID で正確に再削除
+- [x] H-005: `AiCommandConverter` でカレンダー変更・削除前の実スナップショットを `OperationHistory.previousStateJson` に保存
+- [x] H-006: `CalendarSyncManager.getWritableCalendarId()` が書き込み可能カレンダー不在時に固定値 `1L` ではなく `null` を返却
+- [x] H-007: `CalendarSyncManager.detectDuplicatesSafe()` による重複検知障害時の Fail-closed ガード接続
+- [x] H-008: `NotificationActionReceiver.handleCompleteTodo` で ToDo 完了時に `OperationHistoryEntity` を永続化
+- [x] H-009: `NotificationActionReceiver.handleSnoozeAlarm` で `scheduleExactAlarm` 成功時のみ DB 保存（幽霊アラーム防止）
+- [x] H-010: `codex_review_pack/app` 内の重複ソースツリーを完全削除し、`/app` を単一真実源として明文化
+- [x] M-005: `MainActivity.onCreate()` で `CalendarSyncWorker.enqueuePeriodicSync(this)` を呼び出し定期同期を登録
+- [x] 全 50 件の単体テスト PASSED（100% 成功）、Lint 0 Errors、Debug APK ビルド成功
+
+---
+
+## 過去の完了スプリント
 ### Source of Truth 統合 & P0/P1 是正 Sprint (2026-09-29)
 - [x] 正式製品コードのトップレベル `/app` への完全集約・一本化
 - [x] P0-01: Room `fallbackToDestructiveMigration()` の完全削除と明示的マイグレーション（1→2, 2→3）の実装・テスト

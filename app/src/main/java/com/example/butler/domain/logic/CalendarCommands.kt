@@ -14,12 +14,19 @@ class CreateEventCommand(
     private var generatedId: String? = null
     var detectedDuplicates: List<CalendarEvent> = emptyList()
         private set
+    var duplicateDetectionFailed: Boolean = false
+        private set
 
     override suspend fun execute(): Boolean {
         if (event.title.isBlank() || event.endTime <= event.startTime) {
             return false
         }
-        val duplicates = calendarSyncManager.detectDuplicates(event)
+        val duplicateResult = calendarSyncManager.detectDuplicatesSafe(event)
+        if (duplicateResult.isFailure) {
+            duplicateDetectionFailed = true
+            return false
+        }
+        val duplicates = duplicateResult.getOrDefault(emptyList())
         if (duplicates.isNotEmpty() && !allowDuplicate) {
             detectedDuplicates = duplicates
             return false
@@ -79,5 +86,14 @@ class DeleteEventCommand(
         } else {
             false
         }
+    }
+
+    override suspend fun redo(): Boolean {
+        val targetId = restoredEventId ?: deletedEvent.id
+        val success = calendarSyncManager.deleteEvent(targetId)
+        if (success) {
+            restoredEventId = null
+        }
+        return success
     }
 }

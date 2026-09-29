@@ -36,7 +36,8 @@ class MainViewModel(
     private val converter: AiCommandConverter = AiCommandConverter(
         todoDao = todoDao,
         calendarSyncManager = calendarSyncManager
-    )
+    ),
+    val isDatabaseAvailable: Boolean = true
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -47,18 +48,33 @@ class MainViewModel(
     private val processingCardIds = mutableSetOf<String>()
 
     init {
-        loadTodos()
+        if (!isDatabaseAvailable) {
+            _uiState.value = _uiState.value.copy(
+                statusMessage = "安全なデータ保存領域を開けませんでした。データ保護のため編集機能を停止しています。"
+            )
+        } else {
+            CoroutineScope(Dispatchers.IO).launch {
+                undoManager.initialize()
+                loadTodosInternal()
+            }
+        }
     }
 
     fun loadTodos() {
-        if (todoDao != null) {
+        if (isDatabaseAvailable && todoDao != null) {
             CoroutineScope(Dispatchers.IO).launch {
-                val list = todoDao.getAllTodos().map { it.toDomainModel() }
-                withContext(Dispatchers.Main) {
-                    currentTodoList.clear()
-                    currentTodoList.addAll(list)
-                    refreshCards()
-                }
+                loadTodosInternal()
+            }
+        }
+    }
+
+    private suspend fun loadTodosInternal() {
+        if (todoDao != null) {
+            val list = todoDao.getAllTodos().map { it.toDomainModel() }
+            withContext(Dispatchers.Main) {
+                currentTodoList.clear()
+                currentTodoList.addAll(list)
+                refreshCards()
             }
         }
     }
@@ -147,6 +163,12 @@ class MainViewModel(
     }
 
     suspend fun executeCommandInternal(command: Command): Boolean {
+        if (!isDatabaseAvailable) {
+            _uiState.value = _uiState.value.copy(
+                statusMessage = "安全なデータ保存領域を開けませんでした。データ保護のため編集機能を停止しています。"
+            )
+            return false
+        }
         val success = undoManager.executeCommand(command)
         if (success) {
             if (command is CreateTodoCommand) {
@@ -275,16 +297,19 @@ class MainViewModel(
                 null
             }
             val todoDao = db?.todoDao()
+            val historyDao = db?.operationHistoryDao()
+            val undoManager = UndoManager(historyDao = historyDao)
             val calendarSyncManager = CalendarSyncManager(context.applicationContext)
             val converter = AiCommandConverter(
                 todoDao = todoDao,
                 calendarSyncManager = calendarSyncManager
             )
             return MainViewModel(
-                undoManager = UndoManager(),
+                undoManager = undoManager,
                 todoDao = todoDao,
                 calendarSyncManager = calendarSyncManager,
-                converter = converter
+                converter = converter,
+                isDatabaseAvailable = (db != null)
             ) as T
         }
     }

@@ -1,5 +1,31 @@
 # CHANGELOG.md - 変更履歴
 
+## [v0.2.4] - 2026-09-29
+### Fixed & Improved (Persistence / Undo / CI Reliability Remediation Sprint)
+- **H-001 (GitHub Actions CI Reliability)**:
+  - `.gitignore` の `*.jar` 除外ルールに `!gradle/wrapper/gradle-wrapper.jar` 例外を追加し、ラッパーバイナリをコミット追跡。Ubuntu CI ランナーでの `Unable to access jarfile` 失敗を根絶。
+- **H-002 & H-003 (UndoManager DB Wiring & Fail-Closed Initialization)**:
+  - `MainViewModel.Factory` で `OperationHistoryDao` を `UndoManager(historyDao = historyDao)` に渡し、起動時に `undoManager.initialize()` で永続化履歴をロード。
+  - 暗号化 DB 初期化失敗時、インメモリ・平文へのフォールバックを廃止し、`isDatabaseAvailable = false` としてユーザーに安全なエラー通知を行い、変更コマンドを拒否（Fail-closed 化）。
+- **H-004 (Calendar Delete → Undo → Redo ID Corruption)**:
+  - `DeleteEventCommand` において `redo()` をオーバーライド。Undo（復元）時に新規発行された Provider ID（`restoredEventId`）を追跡・対象として再削除を行い、再削除後に ID をクリーンアップ。
+- **H-005 (Calendar Snapshot Persistence in OperationHistory)**:
+  - `AiCommandConverter` で `parseUpdateEvent` および `parseDeleteEvent` を生成する際、カレンダープロバイダから取得したスナップショットを JSON シリアライズし、`OperationHistory.previousStateJson` に永続化。
+- **H-006 & H-007 (Calendar Nullable Writable ID & Safe Duplicate Detection Fail-Closed)**:
+  - `CalendarSyncManager.getWritableCalendarId()` が書き込み可能カレンダー不在時に固定値 `1L` ではなく `null` を返却。
+  - `CalendarSyncManager.detectDuplicatesSafe()` を新設。プロバイダ障害時は `CreateEventCommand` が `duplicateDetectionFailed = true` として作成を安全に拒否（Fail-closed）。
+- **H-008 & H-009 (Notification Actions History & Snooze Verification)**:
+  - `NotificationActionReceiver.handleCompleteTodo` で ToDo 完了時に `OperationHistoryEntity`（`COMPLETE_TODO`, `NOTIFICATION`）を永続化。
+  - `NotificationActionReceiver.handleSnoozeAlarm` で `AlarmScheduler.scheduleExactAlarm` の成否（`ScheduleResult.Scheduled`）を判定し、スケジュール成功時のみ DB に保存。失敗時の幽霊アラーム残存を防止。
+- **H-010 (Single Source of Truth Cleanup in `codex_review_pack`)**:
+  - `codex_review_pack/app` 内の重複ソースツリー（`app/app/...` および `app/src/...`）を完全削除。`codex_review_pack/ARCHIVED_DO_NOT_EDIT.md` を作成し、リポジトリルート `/app` が唯一の真実源であることを明文化。
+- **M-005 (Periodic Calendar Sync Worker Registration)**:
+  - `MainActivity.onCreate()` において初回インストール・起動時にも `CalendarSyncWorker.enqueuePeriodicSync(this)` を呼び出し、定期同期ジョブを確実に登録。
+- **Tests & Quality**:
+  - 全 50 件の単体テスト PASSED（100% 成功、新規追加 4 件含む）。
+  - Android Lint: 0 Errors。
+  - `app-debug.apk` ビルド成功。
+
 ## [v0.2.3] - 2026-09-29
 ### Fixed & Improved (Source of Truth 統合 & P0/P1 是正 Sprint)
 - **Source of Truth 一本化**:

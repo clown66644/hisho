@@ -1,100 +1,96 @@
 # Review Request
 
 ## Sprint
-Source of Truth 統合 & P0/P1 是正 Sprint
+Persistence / Undo / CI Reliability Remediation Sprint
 
 ## Branch
-fix/source-of-truth-and-p0
+fix/persistence-undo-ci-remediation
 
 ## Review Target Commit
-89f7ae2fceed4ae2e2c18052b9c2aeb8753c36fd
+6e18eeee375a705a0f0c1f6ab3fa5d565f82fb9e
 
 ## 目的
-ChatGPT Review (Result: FIX REQUIRED) による指摘事項に基づき、Source of Truth の完全一本化、データ破損・消失リスク（P0）の根絶、および UI・DB・カレンダー・権限の配線不備（P1）の是正を完了。
+ChatGPT Review 10 (Target Commit: b478caae520a7286deb072e5c9af1aaf9f6c61ce, Result: FIX REQUIRED) における全 High (H-001 〜 H-010) および指摘事項の是正完了。
 
 ## 解決した問題・変更内容
 
-### 1. Source of Truth 一本化 (P1-01)
-- 正式製品コードをトップレベル `/app` に集約・一本化。
-- `codex_review_pack` は提出アーカイブ・ログ用として整理し、コードの多重管理を解消。
+### 1. H-001: GitHub Actions CI Reliability (`gradle-wrapper.jar` 欠落の解消)
+- `.gitignore` の `*.jar` 除外ルールに `!gradle/wrapper/gradle-wrapper.jar` 例外を追加。
+- 実行可能なラッパーバイナリをコミット追跡に追加し、GitHub Actions Ubuntu ランナーでの `Unable to access jarfile` 失敗を根絶。
 
-### 2. Database Data Loss Prevention (P0-01)
-- `app/src/main/java/com/example/butler/data/local/AppDatabase.kt` から危険な `.fallbackToDestructiveMigration()` を完全削除。
-- 明示的なマイグレーション `MIGRATION_1_2`（操作履歴テーブル）および `MIGRATION_2_3`（アラームテーブル）を実装・登録。
-- マイグレーションの SQL 実行検証テストを `EncryptedDatabaseTest.kt` に追加。
+### 2. H-002: UndoManager への DB（`OperationHistoryDao`）実配線
+- `MainViewModel.Factory` で `OperationHistoryDao` を取得し、`UndoManager(historyDao = historyDao)` に確実に注入。
+- ViewModel 初期化時に `undoManager.initialize()` を呼び出し、再起動後も永続化された過去の操作履歴をロードして Undo/Redo を継続可能にした。
 
-### 3. Calendar Snapshot & Safe Undo (P0-02, P0-03)
-- `CalendarSyncManager.kt` に `getEventById(eventId: String): CalendarEvent?` を実装。
-- `AiCommandConverter.parseUpdateEvent()` および `parseDeleteEvent()` において、変更/削除前にカレンダープロバイダから対象イベントの完全なスナップショットを取得。
-- 存在しないイベントに対する更新/削除は `NoSuchElementException` で即座に安全に拒否（架空データの生成・上書きを根絶）。
-- 翌月や過去日付への変更でも、Undo 時に元日時・場所・タイトルが 100% 正確に復元されるよう検証テストを追加。
+### 3. H-003: DB 初期化失敗時の Fail-closed 徹底
+- 暗号化データベース初期化失敗時に、インメモリや平文での暗黙的な継続（サイレントフォールバック）を廃止。
+- `isDatabaseAvailable = false` としてユーザーにデータ保護のためのエラーメッセージを提示し、すべてのデータ変更コマンドの実行を安全に拒否（Fail-closed 化）。
 
-### 4. UI と暗号化 DB / Context の実配線 (P1-02, P1-03)
-- `MainViewModel.Factory` を新設し、`MainActivity` から `AppDatabase`（`TodoDao`）および Context（`CalendarSyncManager`）を注入。
-- `MainViewModel` 初期化時に DB から ToDo リストを自動読込。
+### 4. H-004: カレンダー削除 → Undo → Redo の ID 不整合解消
+- `DeleteEventCommand` で `redo()` をオーバーライド。
+- Undo（復元）時にカレンダープロバイダによって新しく発行された ID（`restoredEventId`）を追跡・対象として再削除を行い、再削除後に ID をクリーンアップ。
 
-### 5. BootReceiver のプロセス保護とアラーム復元 (P1-04)
-- `BootReceiver.kt` において、OS 呼び出し時（provider が null の場合）に `AppDatabase.getInstance(context)` を安全に取得してアラームを復元するフォールバックを実装。
-- `val pendingResult = goAsync()` と `try-finally { pendingResult.finish() }` を適用し、バックグラウンド処理中のプロセス強制終了を防止。
+### 5. H-005: カレンダー変更・削除時の事前 Snapshot 永続化
+- `AiCommandConverter` で `parseUpdateEvent` および `parseDeleteEvent` を処理する際、事前に取得した既存の完全な予定データを `calendarEventToJson` で JSON シリアライズし、`OperationHistory.previousStateJson` に永続化。
 
-### 6. Runtime Permission の要求処理追加 (P1-05)
-- `MainActivity.kt` に `POST_NOTIFICATIONS`（Android 13+）および `READ_CALENDAR` / `WRITE_CALENDAR` の実行時権限要求ダイアログフローを実装。
+### 6. H-006: 書き込み可能カレンダー ID の Nullable 化と固定値フォールバック廃止
+- `CalendarSyncManager.getWritableCalendarId()` が書き込み可能カレンダーが存在しない場合に固定値 `1L` ではなく `null` を返却。
+- `insertEvent` も `null` を返して安全に拒否。
 
-### 7. カレンダー ID 動的解決 (P1-06)
-- `CalendarSyncManager` に `getWritableCalendarId()` を実装し、1L 固定ではなく書き込み可能なプライマリカレンダーを探索して設定。
+### 7. H-007: 重複検知失敗時の安全な拒否（Fail-closed）
+- `CalendarSyncManager.detectDuplicatesSafe()` を新設し、取得失敗時は `Result.failure` を返却。
+- `CreateEventCommand.execute()` で判定し、プロバイダ障害時は `duplicateDetectionFailed = true` としてイベント作成を安全に拒否（Fail-closed）。
 
-### 8. GenericConfirmationCommand の No-op 成功廃止 (P1-07)
-- `GenericConfirmationCommand.execute()` を `false` に変更し、不完全な操作の承認で「操作を承認・実行しました」と誤認表示される問題を解消。
+### 8. H-008: 通知「完了」アクション時の操作履歴記録
+- `NotificationActionReceiver.handleCompleteTodo` で ToDo 完了時に `OperationHistoryEntity`（`actionType = "COMPLETE_TODO"`, `actor = "NOTIFICATION"`）を永続化。
+- アプリ画面起動後も誰がいつ完了したかの監査記録を保持し、Undo/Redo への連動を可能にした。
 
-### 9. CreateEventCommand への重複予定ガード接続 (P1-08)
-- `CreateEventCommand.execute()` 内で `calendarSyncManager.detectDuplicates()` を実行。`allowDuplicate = false`（デフォルト）の場合に重複作成をブロック。
+### 9. H-009: 通知「延期」アクション時のアラームスケジュール成否判定
+- `NotificationActionReceiver.handleSnoozeAlarm` で `AlarmScheduler.scheduleExactAlarm` の結果（`ScheduleResult.Scheduled`）を判定し、スケジュール成功時のみ DB に保存。
+- 権限不足や例外発生時の幽霊アラーム残存を防止（Fail-closed）。
 
-### 10. ViewModel Undo 時の整合性保証 (P1-09)
-- `MainViewModel.undo()` で無条件に `currentTodoList.removeAt(last)` を呼ぶ雑な処理を廃止。直前のコマンドが ToDo 作成であった場合のみリストから除外し、DB 接続時は `loadTodos()` で常に正確な状態を同期。
+### 10. H-010: `codex_review_pack` 内の重複ソースツリー完全撤去
+- `codex_review_pack/app` 内の過去スナップショット（`app/app/...` および `app/src/...`）を完全削除。
+- `codex_review_pack/ARCHIVED_DO_NOT_EDIT.md` を作成。
+- `codex_review_pack/AGENTS.md` を更新し、リポジトリルートの `/app` のみが唯一の作業対象（Single Source of Truth）であることを明文化。
 
-### 11. Security (SettingsManager Fail-closed)
-- `SettingsManager.kt` において、`EncryptedSharedPreferences` 初期化失敗時に平文 SharedPreferences へフォールバックする脆弱性を廃止。暗号化ストレージが使用不可の場合は API キー保存を安全に拒否（Fail-closed 化）。
+### 11. M-005: アプリ起動時（`MainActivity.onCreate`）の定期同期 Worker 登録
+- 端末再起動時（BootReceiver）だけでなく、初回インストール・通常起動時にも `CalendarSyncWorker.enqueuePeriodicSync(this)` を呼び出し、定期同期ジョブを確実に登録。
 
 ## 変更ファイル
-- `app/src/main/java/com/example/butler/data/local/AppDatabase.kt`
+- `.gitignore`
+- `gradle/wrapper/gradle-wrapper.jar`
 - `app/src/main/java/com/example/butler/data/local/CalendarSyncManager.kt`
-- `app/src/main/java/com/example/butler/data/local/security/SettingsManager.kt`
 - `app/src/main/java/com/example/butler/domain/logic/AiCommandConverter.kt`
 - `app/src/main/java/com/example/butler/domain/logic/CalendarCommands.kt`
-- `app/src/main/java/com/example/butler/domain/logic/UndoManager.kt`
-- `app/src/main/java/com/example/butler/receiver/BootReceiver.kt`
+- `app/src/main/java/com/example/butler/receiver/NotificationActionReceiver.kt`
 - `app/src/main/java/com/example/butler/ui/MainActivity.kt`
 - `app/src/main/java/com/example/butler/ui/MainViewModel.kt`
 - `app/src/test/java/com/example/butler/data/local/CalendarSyncTest.kt`
-- `app/src/test/java/com/example/butler/data/local/EncryptedDatabaseTest.kt`
+- `app/src/test/java/com/example/butler/worker/NotificationAndSyncTest.kt`
+- `codex_review_pack/ARCHIVED_DO_NOT_EDIT.md`
+- `codex_review_pack/AGENTS.md`
 - `docs/CHANGELOG.md`
 - `docs/TASKS.md`
-- `reviews/CHATGPT_REVIEW.md`
 - `reviews/REVIEW_REQUEST.md`
 
-## 関連要件
-REQUIREMENTS.md:
-- 1.1 セキュリティとプライバシー（平文保存禁止、Fail-closed）
-- 2.1 データ破損・消失の防止（Destructive Migration の禁止）
-- 3.2 カレンダー連携（重複検知、安全な同期）
-- 4.2 操作の取り消し (Undo/Redo: 完全なスナップショットによる復元)
-
 ## テスト結果
-- Build: SUCCESS (`assembleDebug`, APK 24.4MB 生成)
-- Lint: SUCCESS (`lintDebug` - 0 errors, 55 warnings)
-- Unit tests: 46件中46件成功 (`testDebugUnitTest` - 100% PASS)
+- Build: SUCCESS (`assembleDebug`, APK 生成)
+- Lint: SUCCESS (`lintDebug` - 0 errors)
+- Unit tests: 50件中50件成功 (`testDebugUnitTest` - 100% PASS)
   - `AlarmIntegrationTest`: 4/4 PASS
-  - `CalendarSyncTest`: 7/7 PASS (スナップショット更新・削除 Undo, 重複ブロック, 不在時例外含む)
-  - `EncryptedDatabaseTest`: 5/5 PASS (Migration SQL 実行検証含む)
+  - `CalendarSyncTest`: 10/10 PASS (Redo 追跡, 重複検知失敗時 Fail-closed, Nullable ID 検証追加)
+  - `EncryptedDatabaseTest`: 5/5 PASS
   - `SettingsAndPersonaTest`: 2/2 PASS
   - `AiStructuredActionTest`: 7/7 PASS
   - `PriorityCalculatorTest`: 3/3 PASS
   - `UndoManagerTest`: 11/11 PASS
   - `UiStateTest`: 3/3 PASS
-  - `NotificationAndSyncTest`: 4/4 PASS
+  - `NotificationAndSyncTest`: 5/5 PASS (ToDo 完了履歴記録, スヌーズ失敗時 Fail-closed 追加)
 
 ## 重点確認してほしい内容
-1. `AppDatabase.kt` の `MIGRATION_1_2` および `MIGRATION_2_3` のスキーマ定義の妥当性
-2. `AiCommandConverter.kt` および `CalendarSyncManager.kt` におけるスナップショット取得・不在時安全拒否の設計
-3. `MainViewModel.kt` における Room DB / Context の Factory 注入と Undo 時の ToDo 整合性
-4. `BootReceiver.kt` の `goAsync()` および DB 取得フォールバックの実装
+1. `UndoManager` の永続化履歴初期化と DB 障害時の Fail-closed 挙動
+2. `DeleteEventCommand` の Undo 後の Redo ID 追跡ロジック
+3. `CalendarSyncManager` の安全な重複検知とプロバイダ例外時の Fail-closed
+4. `NotificationActionReceiver` の操作履歴記録とスヌーズ成功判定
+5. `codex_review_pack` のアーカイブ化による Single Source of Truth の確立

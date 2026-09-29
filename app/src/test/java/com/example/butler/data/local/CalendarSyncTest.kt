@@ -327,4 +327,75 @@ class CalendarSyncTest {
         }
         assertTrue(caught)
     }
+
+    @Test
+    fun testDeleteEventCommandUndoAndRedo() = runBlocking {
+        val baseTime = 1770000000000L
+        val event = CalendarEvent(
+            id = "ev-del-redo",
+            title = "削除とRedoの検証",
+            startTime = baseTime,
+            endTime = baseTime + 3600000L
+        )
+        syncManager.insertEvent(event)
+        assertEquals(1, inMemoryEvents.size)
+
+        val history = OperationHistory(
+            id = "op-del-redo",
+            actor = Actor.USER,
+            actionType = "DELETE_EVENT",
+            targetId = event.id
+        )
+        val deleteCmd = DeleteEventCommand(history, event, syncManager)
+
+        // 1. 削除実行
+        assertTrue(deleteCmd.execute())
+        assertEquals(0, inMemoryEvents.size)
+
+        // 2. Undo (復元)
+        assertTrue(deleteCmd.undo())
+        assertEquals(1, inMemoryEvents.size)
+
+        // 3. Redo (再削除)
+        assertTrue(deleteCmd.redo())
+        assertEquals(0, inMemoryEvents.size)
+
+        // 4. 再度 Undo (再復元)
+        assertTrue(deleteCmd.undo())
+        assertEquals(1, inMemoryEvents.size)
+    }
+
+    @Test
+    fun testCreateEventCommandFailClosedOnSafeDuplicateError() = runBlocking {
+        // SafeDuplicate で例外を投げる SyncManager をエミュレート
+        val faultySyncManager = object : CalendarSyncManager(inMemoryEvents = mutableListOf()) {
+            override fun detectDuplicatesSafe(event: CalendarEvent): Result<List<CalendarEvent>> {
+                return Result.failure(IllegalStateException("Provider unavailable"))
+            }
+        }
+        val event = CalendarEvent(
+            id = "ev-safe-fail",
+            title = "Providerエラー時の予定",
+            startTime = 1770000000000L,
+            endTime = 1770003600000L
+        )
+        val history = OperationHistory(
+            id = "op-safe-fail",
+            actor = Actor.USER,
+            actionType = "CREATE_EVENT",
+            targetId = event.id
+        )
+        val cmd = CreateEventCommand(history, event, faultySyncManager)
+        val success = cmd.execute()
+        assertFalse(success)
+        assertTrue(cmd.duplicateDetectionFailed)
+    }
+
+    @Test
+    fun testWritableCalendarIdReturnsNullWhenNoCalendarFound() {
+        val noCalendarManager = CalendarSyncManager()
+        // カレンダープロバイダが存在しない/カレンダー未登録環境では 1L へのフォールバックではなく null を返すこと
+        val calendarId = noCalendarManager.getWritableCalendarId()
+        assertEquals(null, calendarId)
+    }
 }

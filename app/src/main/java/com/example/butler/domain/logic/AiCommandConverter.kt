@@ -298,6 +298,7 @@ class AiCommandConverter(
             actor = actor,
             actionType = actionType,
             targetId = eventId,
+            previousStateJson = calendarEventToJson(existing),
             newStateJson = rawJson
         )
 
@@ -329,6 +330,7 @@ class AiCommandConverter(
             actor = actor,
             actionType = actionType,
             targetId = eventId,
+            previousStateJson = calendarEventToJson(existing),
             newStateJson = rawJson
         )
 
@@ -337,5 +339,17 @@ class AiCommandConverter(
             deletedEvent = existing,
             calendarSyncManager = getCalendarManager()
         )
+    }
+
+    private fun calendarEventToJson(event: CalendarEvent): String {
+        return JSONObject().apply {
+            put("id", event.id)
+            put("googleEventId", event.googleEventId)
+            put("title", event.title)
+            put("startTime", event.startTime)
+            put("endTime", event.endTime)
+            put("location", event.location)
+            put("isAllDay", event.isAllDay)
+        }.toString()
     }
 }

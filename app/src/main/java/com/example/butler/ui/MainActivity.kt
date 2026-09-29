@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.butler.R
 import com.example.butler.alarm.AlarmScheduler
 import com.example.butler.data.remote.PersonaType
+import com.example.butler.worker.CalendarSyncWorker
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -49,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         observeUiState()
         checkExactAlarmPermission()
         checkRuntimePermissions()
+        CalendarSyncWorker.enqueuePeriodicSync(this)
     }
 
     private fun setupRecyclerView() {

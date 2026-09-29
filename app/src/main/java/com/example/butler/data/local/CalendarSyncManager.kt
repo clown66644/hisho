@@ -10,12 +10,12 @@ import androidx.core.content.ContextCompat
 import com.example.butler.domain.model.CalendarEvent
 import java.util.TimeZone
 
-class CalendarSyncManager(
+open class CalendarSyncManager(
     private val context: Context? = null,
     private val inMemoryEvents: MutableList<CalendarEvent>? = null
 ) {
 
-    fun hasReadPermission(): Boolean {
+    open fun hasReadPermission(): Boolean {
         if (context == null) return inMemoryEvents != null
         return ContextCompat.checkSelfPermission(
             context,
@@ -23,7 +23,7 @@ class CalendarSyncManager(
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    fun hasWritePermission(): Boolean {
+    open fun hasWritePermission(): Boolean {
         if (context == null) return inMemoryEvents != null
         return ContextCompat.checkSelfPermission(
             context,
@@ -32,18 +32,19 @@ class CalendarSyncManager(
     }
 
     /**
-     * 指定期間の予定一覧を取得する。権限がない場合は例外を投げず安全に空リストを返す。
+     * 指定期間の予定一覧を安全に取得する。障害時は Result.failure を返す。
      */
-    fun getEvents(startTime: Long, endTime: Long): List<CalendarEvent> {
+    open fun getEventsSafe(startTime: Long, endTime: Long): Result<List<CalendarEvent>> {
         if (inMemoryEvents != null) {
-            return inMemoryEvents.filter {
+            val list = inMemoryEvents.filter {
                 (it.startTime in startTime..endTime) || (it.endTime in startTime..endTime) ||
                         (it.startTime <= startTime && it.endTime >= endTime)
             }
+            return Result.success(list)
         }
 
-        if (!hasReadPermission() || context == null) {
-            return emptyList()
+        if (context == null || !hasReadPermission()) {
+            return Result.failure(SecurityException("カレンダーの読み取り権限がありません。"))
         }
 
         val eventsList = mutableListOf<CalendarEvent>()
@@ -59,16 +60,16 @@ class CalendarSyncManager(
         val selection = "(${CalendarContract.Events.DTSTART} <= ?) AND (${CalendarContract.Events.DTEND} >= ?)"
         val selectionArgs = arrayOf(endTime.toString(), startTime.toString())
 
-        try {
+        return try {
             val cursor = context.contentResolver.query(
                 CalendarContract.Events.CONTENT_URI,
                 projection,
                 selection,
                 selectionArgs,
                 "${CalendarContract.Events.DTSTART} ASC"
-            )
+            ) ?: return Result.failure(IllegalStateException("Calendar Provider query returned null"))
 
-            cursor?.use {
+            cursor.use {
                 val idIdx = it.getColumnIndexOrThrow(CalendarContract.Events._ID)
                 val titleIdx = it.getColumnIndexOrThrow(CalendarContract.Events.TITLE)
                 val startIdx = it.getColumnIndexOrThrow(CalendarContract.Events.DTSTART)
@@ -97,17 +98,23 @@ class CalendarSyncManager(
                     )
                 }
             }
+            Result.success(eventsList)
         } catch (e: Exception) {
-            return emptyList()
+            Result.failure(e)
         }
+    }
 
-        return eventsList
+    /**
+     * 指定期間の予定一覧を取得する。後方互換用。
+     */
+    open fun getEvents(startTime: Long, endTime: Long): List<CalendarEvent> {
+        return getEventsSafe(startTime, endTime).getOrDefault(emptyList())
     }
 
     /**
      * ProviderのイベントIDから完全な予定スナップショットを取得する。
      */
-    fun getEventById(eventId: String): CalendarEvent? {
+    open fun getEventById(eventId: String): CalendarEvent? {
         if (inMemoryEvents != null) {
             return inMemoryEvents.find { it.id == eventId || it.googleEventId == eventId }
         }
@@ -163,10 +170,10 @@ class CalendarSyncManager(
     }
 
     /**
-     * 書き込み可能なカレンダーIDをクエリして返す。見つからない場合はフォールバックとして 1L を返す。
+     * 書き込み可能なカレンダーIDをクエリして返す。見つからない場合は null を返す。
      */
-    fun getWritableCalendarId(): Long {
-        if (context == null || !hasReadPermission()) return 1L
+    open fun getWritableCalendarId(): Long? {
+        if (context == null || !hasReadPermission()) return null
 
         val projection = arrayOf(
             CalendarContract.Calendars._ID,
@@ -188,12 +195,10 @@ class CalendarSyncManager(
                 if (it.moveToFirst()) {
                     val idIdx = it.getColumnIndexOrThrow(CalendarContract.Calendars._ID)
                     it.getLong(idIdx)
-                } else {
-                    1L
-                }
-            } ?: 1L
+                } else null
+            }
         } catch (e: Exception) {
-            1L
+            null
         }
     }
 
@@ -201,8 +206,7 @@ class CalendarSyncManager(
      * 予定をカレンダーに追加する。
      * @return 成功時はイベントID、失敗時は null
      */
-    fun insertEvent(event: CalendarEvent, calendarId: Long? = null): String? {
-        val targetCalendarId = calendarId ?: getWritableCalendarId()
+    open fun insertEvent(event: CalendarEvent, calendarId: Long? = null): String? {
         if (inMemoryEvents != null) {
             inMemoryEvents.removeIf { it.id == event.id }
             inMemoryEvents.add(event)
@@ -212,6 +216,8 @@ class CalendarSyncManager(
         if (!hasWritePermission() || context == null) {
             return null
         }
+
+        val targetCalendarId = calendarId ?: getWritableCalendarId() ?: return null
 
         return try {
             val values = ContentValues().apply {
@@ -234,7 +240,7 @@ class CalendarSyncManager(
     /**
      * 予定を更新する。
      */
-    fun updateEvent(event: CalendarEvent): Boolean {
+    open fun updateEvent(event: CalendarEvent): Boolean {
         if (inMemoryEvents != null) {
             val idx = inMemoryEvents.indexOfFirst { it.id == event.id }
             if (idx >= 0) {
@@ -269,7 +275,7 @@ class CalendarSyncManager(
     /**
      * 予定を削除する。
      */
-    fun deleteEvent(eventId: String): Boolean {
+    open fun deleteEvent(eventId: String): Boolean {
         if (inMemoryEvents != null) {
             return inMemoryEvents.removeIf { it.id == eventId }
         }
@@ -288,18 +294,27 @@ class CalendarSyncManager(
     }
 
     /**
-     * 重複・時間帯の重複する予定を検出する。
+     * 重複・時間帯の重複する予定を安全に検出する。取得失敗時は Result.failure を返す。
      */
-    fun detectDuplicates(event: CalendarEvent): List<CalendarEvent> {
+    open fun detectDuplicatesSafe(event: CalendarEvent): Result<List<CalendarEvent>> {
         if (event.endTime <= event.startTime) {
-            return emptyList()
+            return Result.success(emptyList())
         }
-        val existing = getEvents(event.startTime - 60000, event.endTime + 60000)
-        return existing.filter { other ->
-            other.id != event.id && (
-                other.title.trim().equals(event.title.trim(), ignoreCase = true) ||
-                (other.startTime < event.endTime && other.endTime > event.startTime)
-            )
+        val result = getEventsSafe(event.startTime - 60000, event.endTime + 60000)
+        return result.map { existing ->
+            existing.filter { other ->
+                other.id != event.id && (
+                    other.title.trim().equals(event.title.trim(), ignoreCase = true) ||
+                    (other.startTime < event.endTime && other.endTime > event.startTime)
+                )
+            }
         }
+    }
+
+    /**
+     * 重複・時間帯の重複する予定を検出する。後方互換用。
+     */
+    open fun detectDuplicates(event: CalendarEvent): List<CalendarEvent> {
+        return detectDuplicatesSafe(event).getOrDefault(emptyList())
     }
 }

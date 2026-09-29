@@ -50,16 +50,39 @@ class NotificationAndSyncTest {
         override suspend fun deleteAlarm(alarm: AlarmItemEntity) { db.remove(alarm.id) }
     }
 
+    private class FakeOperationHistoryDao : com.example.butler.data.local.dao.OperationHistoryDao {
+        val db = mutableMapOf<String, com.example.butler.data.local.entity.OperationHistoryEntity>()
+
+        override suspend fun getAllHistories(): List<com.example.butler.data.local.entity.OperationHistoryEntity> = db.values.toList()
+        override suspend fun getHistoryById(id: String): com.example.butler.data.local.entity.OperationHistoryEntity? = db[id]
+        override suspend fun getUndoableHistories(): List<com.example.butler.data.local.entity.OperationHistoryEntity> =
+            db.values.filter { !it.isUndone && it.status == "SUCCESS" }
+        override suspend fun insertHistory(history: com.example.butler.data.local.entity.OperationHistoryEntity): Long {
+            db[history.id] = history
+            return 1L
+        }
+        override suspend fun updateHistory(history: com.example.butler.data.local.entity.OperationHistoryEntity) {
+            db[history.id] = history
+        }
+        override suspend fun deleteHistoryById(id: String) {
+            db.remove(id)
+        }
+    }
+
     private class FakeAlarmScheduler(context: Context) : AlarmScheduler(context) {
         val scheduledAlarms = mutableMapOf<String, Long>()
+        var shouldFail: Boolean = false
 
-        override fun canScheduleExactAlarms(): Boolean = true
+        override fun canScheduleExactAlarms(): Boolean = !shouldFail
         override fun scheduleExactAlarm(
             alarmId: String,
             title: String,
             message: String,
             triggerAtMillis: Long
         ): ScheduleResult {
+            if (shouldFail) {
+                return ScheduleResult.PermissionRequired
+            }
             scheduledAlarms[alarmId] = triggerAtMillis
             return ScheduleResult.Scheduled
         }
@@ -71,6 +94,7 @@ class NotificationAndSyncTest {
     private lateinit var context: Context
     private lateinit var fakeTodoDao: FakeTodoDao
     private lateinit var fakeAlarmDao: FakeAlarmDao
+    private lateinit var fakeHistoryDao: FakeOperationHistoryDao
     private lateinit var fakeScheduler: FakeAlarmScheduler
 
     @Before
@@ -78,6 +102,7 @@ class NotificationAndSyncTest {
         context = ApplicationProvider.getApplicationContext()
         fakeTodoDao = FakeTodoDao()
         fakeAlarmDao = FakeAlarmDao()
+        fakeHistoryDao = FakeOperationHistoryDao()
         fakeScheduler = FakeAlarmScheduler(context)
     }
 
@@ -152,6 +177,7 @@ class NotificationAndSyncTest {
 
         val receiver = NotificationActionReceiver(
             todoDaoProvider = { fakeTodoDao },
+            historyDaoProvider = { fakeHistoryDao },
             alarmDaoProvider = { fakeAlarmDao },
             schedulerProvider = { fakeScheduler }
         )
@@ -163,6 +189,16 @@ class NotificationAndSyncTest {
         val updated = fakeTodoDao.getTodoById("test-todo-action-1")
         assertNotNull(updated)
         assertEquals(TodoStatus.COMPLETED.name, updated!!.status)
+
+        // 操作履歴（OperationHistoryEntity）が記録されていること
+        val histories = fakeHistoryDao.getAllHistories()
+        assertEquals(1, histories.size)
+        val history = histories[0]
+        assertEquals("COMPLETE_TODO", history.actionType)
+        assertEquals("NOTIFICATION", history.actor)
+        assertEquals("test-todo-action-1", history.targetId)
+        assertNotNull(history.previousStateJson)
+        assertNotNull(history.newStateJson)
     }
 
     @Test
@@ -184,6 +220,7 @@ class NotificationAndSyncTest {
 
         val receiver = NotificationActionReceiver(
             todoDaoProvider = { fakeTodoDao },
+            historyDaoProvider = { fakeHistoryDao },
             alarmDaoProvider = { fakeAlarmDao },
             schedulerProvider = { fakeScheduler }
         )
@@ -195,5 +232,40 @@ class NotificationAndSyncTest {
         val alarms = fakeAlarmDao.getAllAlarms()
         assertTrue(alarms.any { it.title.contains("延期") })
         assertEquals(1, fakeScheduler.scheduledAlarms.size)
+    }
+
+    @Test
+    fun testNotificationActionReceiverSnoozeActionFailClosedWhenAlarmScheduleFails() = runBlocking {
+        fakeScheduler.shouldFail = true
+
+        val alarm = AlarmItemEntity(
+            id = "test-alarm-snooze-fail",
+            title = "失敗するアラーム",
+            message = "権限不足テスト",
+            triggerAtMillis = System.currentTimeMillis() + 1000L
+        )
+        fakeAlarmDao.insertAlarm(alarm)
+
+        val intent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationHelper.ACTION_SNOOZE
+            putExtra(NotificationHelper.EXTRA_ALARM_ID, "test-alarm-snooze-fail")
+            putExtra(NotificationHelper.EXTRA_NOTIFICATION_ID, 203)
+        }
+
+        val receiver = NotificationActionReceiver(
+            todoDaoProvider = { fakeTodoDao },
+            historyDaoProvider = { fakeHistoryDao },
+            alarmDaoProvider = { fakeAlarmDao },
+            schedulerProvider = { fakeScheduler }
+        )
+        receiver.onReceive(context, intent)
+
+        kotlinx.coroutines.delay(200)
+
+        // スケジュール失敗時は新しいアラームがDBに登録されないこと（幽霊アラームの防止）
+        val alarms = fakeAlarmDao.getAllAlarms()
+        assertEquals(1, alarms.size)
+        assertEquals("test-alarm-snooze-fail", alarms[0].id)
+        assertEquals(0, fakeScheduler.scheduledAlarms.size)
     }
 }
