@@ -73,13 +73,19 @@ class DeleteEventCommand(
 
     var restoredEventId: String? = null
         private set
+    var failedDueToRecurrence: Boolean = false
+        private set
 
     override suspend fun execute(): Boolean {
+        if (!deletedEvent.recurrenceRule.isNullOrEmpty()) {
+            failedDueToRecurrence = true
+            return false
+        }
         return calendarSyncManager.deleteEvent(deletedEvent.id)
     }
 
     override suspend fun undo(): Boolean {
-        val id = calendarSyncManager.insertEvent(deletedEvent)
+        val id = calendarSyncManager.insertEvent(deletedEvent, deletedEvent.calendarId)
         return if (id != null) {
             restoredEventId = id
             true

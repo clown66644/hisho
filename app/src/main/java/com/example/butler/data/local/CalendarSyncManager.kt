@@ -54,7 +54,10 @@ open class CalendarSyncManager(
             CalendarContract.Events.DTSTART,
             CalendarContract.Events.DTEND,
             CalendarContract.Events.EVENT_LOCATION,
-            CalendarContract.Events.ALL_DAY
+            CalendarContract.Events.ALL_DAY,
+            CalendarContract.Events.CALENDAR_ID,
+            CalendarContract.Events.EVENT_TIMEZONE,
+            CalendarContract.Events.RRULE
         )
 
         val selection = "(${CalendarContract.Events.DTSTART} <= ?) AND (${CalendarContract.Events.DTEND} >= ?)"
@@ -76,6 +79,9 @@ open class CalendarSyncManager(
                 val endIdx = it.getColumnIndexOrThrow(CalendarContract.Events.DTEND)
                 val locIdx = it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION)
                 val allDayIdx = it.getColumnIndexOrThrow(CalendarContract.Events.ALL_DAY)
+                    val calIdIdx = it.getColumnIndex(CalendarContract.Events.CALENDAR_ID)
+                    val tzIdx = it.getColumnIndex(CalendarContract.Events.EVENT_TIMEZONE)
+                    val rruleIdx = it.getColumnIndex(CalendarContract.Events.RRULE)
 
                 while (it.moveToNext()) {
                     val id = it.getLong(idIdx).toString()
@@ -84,6 +90,9 @@ open class CalendarSyncManager(
                     val dtEnd = it.getLong(endIdx)
                     val loc = it.getString(locIdx)
                     val isAllDay = it.getInt(allDayIdx) == 1
+                    val calId = if (calIdIdx >= 0) it.getLong(calIdIdx) else null
+                    val tz = if (tzIdx >= 0) it.getString(tzIdx) else null
+                    val rrule = if (rruleIdx >= 0) it.getString(rruleIdx) else null
 
                     eventsList.add(
                         CalendarEvent(
@@ -93,7 +102,10 @@ open class CalendarSyncManager(
                             startTime = dtStart,
                             endTime = dtEnd,
                             location = loc,
-                            isAllDay = isAllDay
+                            isAllDay = isAllDay,
+                        calendarId = calId,
+                        timezone = tz,
+                        recurrenceRule = rrule
                         )
                     )
                 }
@@ -129,7 +141,10 @@ open class CalendarSyncManager(
             CalendarContract.Events.DTSTART,
             CalendarContract.Events.DTEND,
             CalendarContract.Events.EVENT_LOCATION,
-            CalendarContract.Events.ALL_DAY
+            CalendarContract.Events.ALL_DAY,
+            CalendarContract.Events.CALENDAR_ID,
+            CalendarContract.Events.EVENT_TIMEZONE,
+            CalendarContract.Events.RRULE
         )
 
         return try {
@@ -145,6 +160,9 @@ open class CalendarSyncManager(
                     val endIdx = it.getColumnIndexOrThrow(CalendarContract.Events.DTEND)
                     val locIdx = it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION)
                     val allDayIdx = it.getColumnIndexOrThrow(CalendarContract.Events.ALL_DAY)
+                    val calIdIdx = it.getColumnIndex(CalendarContract.Events.CALENDAR_ID)
+                    val tzIdx = it.getColumnIndex(CalendarContract.Events.EVENT_TIMEZONE)
+                    val rruleIdx = it.getColumnIndex(CalendarContract.Events.RRULE)
 
                     val id = it.getLong(idIdx).toString()
                     val title = it.getString(titleIdx) ?: "無題"
@@ -152,6 +170,9 @@ open class CalendarSyncManager(
                     val dtEnd = it.getLong(endIdx)
                     val loc = it.getString(locIdx)
                     val isAllDay = it.getInt(allDayIdx) == 1
+                    val calId = if (calIdIdx >= 0) it.getLong(calIdIdx) else null
+                    val tz = if (tzIdx >= 0) it.getString(tzIdx) else null
+                    val rrule = if (rruleIdx >= 0) it.getString(rruleIdx) else null
 
                     CalendarEvent(
                         id = id,
@@ -160,7 +181,10 @@ open class CalendarSyncManager(
                         startTime = dtStart,
                         endTime = dtEnd,
                         location = loc,
-                        isAllDay = isAllDay
+                        isAllDay = isAllDay,
+                        calendarId = calId,
+                        timezone = tz,
+                        recurrenceRule = rrule
                     )
                 } else null
             }

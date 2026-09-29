@@ -47,7 +47,7 @@ class UndoManager(
             val exists = try {
                 historyDao.getHistoryById(operationId) != null
             } catch (e: Exception) {
-                false
+                throw IllegalStateException("Failed to read OperationHistory DB", e)
             }
             if (exists) {
                 executedOperationIds.add(operationId)
@@ -144,7 +144,7 @@ class UndoManager(
             try {
                 historyDao.updateHistory(OperationHistoryEntity.fromDomainModel(updatedHistory))
             } catch (e: Exception) {
-                // DB更新例外時も処理継続
+                throw IllegalStateException("Failed to update History DB", e)
             }
         }
 
@@ -178,7 +178,7 @@ class UndoManager(
             try {
                 historyDao.updateHistory(OperationHistoryEntity.fromDomainModel(updatedHistory))
             } catch (e: Exception) {
-                // DB更新例外時も処理継続
+                throw IllegalStateException("Failed to update History DB", e)
             }
         }
 

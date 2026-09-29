@@ -29,23 +29,20 @@ class NotificationActionReceiver(
 
     override fun onReceive(context: Context, intent: Intent) {
         val notificationId = intent.getIntExtra(NotificationHelper.EXTRA_NOTIFICATION_ID, -1)
-        if (notificationId != -1) {
-            NotificationHelper.cancelNotification(context, notificationId)
-        }
 
         when (intent.action) {
             NotificationHelper.ACTION_COMPLETE -> {
                 val todoId = intent.getStringExtra(NotificationHelper.EXTRA_TODO_ID) ?: return
-                handleCompleteTodo(context, todoId)
+                handleCompleteTodo(context, todoId, notificationId)
             }
             NotificationHelper.ACTION_SNOOZE -> {
                 val alarmId = intent.getStringExtra(NotificationHelper.EXTRA_ALARM_ID) ?: return
-                handleSnoozeAlarm(context, alarmId)
+                handleSnoozeAlarm(context, alarmId, notificationId)
             }
         }
     }
 
-    private fun handleCompleteTodo(context: Context, todoId: String) {
+    private fun handleCompleteTodo(context: Context, todoId: String, notificationId: Int) {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -71,19 +68,16 @@ class NotificationActionReceiver(
                         status = TodoStatus.COMPLETED.name,
                         updatedAt = System.currentTimeMillis()
                     )
-                    todoDao.updateTodo(updatedTodo)
-
                     val newJson = JSONObject().apply {
                         put("id", updatedTodo.id)
                         put("title", updatedTodo.title)
                         put("status", updatedTodo.status)
                         put("updatedAt", updatedTodo.updatedAt)
                     }.toString()
-
                     val history = OperationHistoryEntity(
                         id = UUID.randomUUID().toString(),
                         timestamp = System.currentTimeMillis(),
-                        actor = "NOTIFICATION",
+                        actor = "SYSTEM", // Fix M-004
                         userInput = null,
                         aiInterpretation = null,
                         actionType = "COMPLETE_TODO",
@@ -93,7 +87,14 @@ class NotificationActionReceiver(
                         status = "SUCCESS",
                         isUndone = false
                     )
-                    historyDao.insertHistory(history)
+                    val db = AppDatabase.getInstance(context, DatabasePassphraseProvider(context).getOrGeneratePassphrase())
+                    db.runInTransaction {
+                        todoDao.updateTodo(updatedTodo)
+                        historyDao.insertHistory(history)
+                    }
+                    if (notificationId != -1) {
+                        NotificationHelper.cancelNotification(context, notificationId)
+                    }
                 }
             } catch (e: Exception) {
                 // 安全にフォールバック
@@ -103,7 +104,7 @@ class NotificationActionReceiver(
         }
     }
 
-    private fun handleSnoozeAlarm(context: Context, alarmId: String) {
+    private fun handleSnoozeAlarm(context: Context, alarmId: String, notificationId: Int) {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -136,6 +137,9 @@ class NotificationActionReceiver(
 
                     if (result is ScheduleResult.Scheduled) {
                         dao.insertAlarm(snoozedAlarm)
+                        if (notificationId != -1) {
+                            NotificationHelper.cancelNotification(context, notificationId)
+                        }
                     }
                 }
             } catch (e: Exception) {

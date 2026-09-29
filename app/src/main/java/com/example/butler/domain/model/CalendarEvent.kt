@@ -12,5 +12,8 @@ data class CalendarEvent(
     val belongings: List<String> = emptyList(),
     val prepTasks: List<String> = emptyList(),
     val isAllDay: Boolean = false,
+    val calendarId: Long? = null,
+    val timezone: String? = null,
+    val recurrenceRule: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )

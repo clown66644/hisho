@@ -55,6 +55,15 @@ class MainViewModel(
         } else {
             CoroutineScope(Dispatchers.IO).launch {
                 undoManager.initialize()
+                undoManager.restoreFromHistory { history ->
+                    com.example.butler.domain.logic.CommandResolver.restoreCommand(
+                        history,
+                        todoDao,
+                        currentTodoList,
+                        calendarSyncManager ?: com.example.butler.data.local.CalendarSyncManager()
+                    )
+                }
+                updateUndoRedoStatus()
                 loadTodosInternal()
             }
         }
@@ -170,6 +179,12 @@ class MainViewModel(
             return false
         }
         val success = undoManager.executeCommand(command)
+        if (!success && command is com.example.butler.domain.logic.DeleteEventCommand && command.failedDueToRecurrence) {
+            _uiState.value = _uiState.value.copy(
+                statusMessage = "現在のバージョンでは安全にUndoできないため、複雑な繰り返し予定の削除を拒否しました。"
+            )
+            return false
+        }
         if (success) {
             if (command is CreateTodoCommand) {
                 if (todoDao != null) {
