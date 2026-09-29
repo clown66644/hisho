@@ -10,7 +10,7 @@ Base SHA:
 b478caae520a7286deb072e5c9af1aaf9f6c61ce
 
 Code Head SHA:
-WILL_BE_REPLACED_BY_GIT_REV_PARSE
+
 
 Push確認:
 SUCCESS
