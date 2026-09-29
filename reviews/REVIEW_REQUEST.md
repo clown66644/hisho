@@ -10,7 +10,7 @@ Base SHA:
 b478caae520a7286deb072e5c9af1aaf9f6c61ce
 
 Code Head SHA:
-WILL_BE_REPLACED_BY_CODE_HEAD
+WILL_BE_REPLACED_BY_GIT_REV_PARSE
 
 Push確認:
 SUCCESS
@@ -19,12 +19,12 @@ GitHub Actions:
 PENDING
 
 変更目的:
-Persistence / Undo / CI Reliability Remediation (Review 12 指摘の Critical / High / Medium 対応)
+Persistence / Undo / CI Reliability Remediation (Review 13 指摘対応)
 
 重点確認:
-- P0-01: GitHub Actionsがコンパイルエラーで失敗 (Kotlinコンパイルエラー修正完了)
-- P0-02: Calendar Complete Snapshotがまだ永続化されていない (calendarId/timezone/recurrenceRule の保存追加)
-- H-001: Persistent Undoは部分実装 (CommandResolverにて全対象Command復元対応)
-- H-002: UndoManagerのFail-closedが不完全 (DBエラー時例外送出、部分成功回避)
-- H-003, H-004: NotificationのUndo未完成/Snooze (UpdateTodoCommand＋UndoManagerへ統合、Snoozeキャンセル対応)
-- M-001, M-002: Provider ID変更テスト追加、REVIEW_REQUESTから自己参照SHA削除
+- C-001: GitHub Actionsコンパイルエラー (newEvent未定義、TodoStatus型不一致修正)
+- H-001: CREATE_EVENTの再起動後Undo不備 (Provider ID発行後にtargetIdとnewStateJsonを更新し履歴を上書き)
+- H-002: COMPLETE_TODOの復元不備 (jsonToTodoが要求する全フィールドをJSONへ保存)
+- H-003: UndoManagerのFail-closed不備 (initializeの例外を上位へ送出し安全に停止)
+- H-004: Undo/Redoの部分成功問題 (stack移動をDB更新成功後に移動、DB事前可用性確認)
+- M-001, M-002: REVIEW_REQUEST.mdのSHA自己参照廃止、Code Head SHA自動入力スクリプト導入

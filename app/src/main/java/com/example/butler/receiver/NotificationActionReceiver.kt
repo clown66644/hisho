@@ -45,64 +45,58 @@ class NotificationActionReceiver(
 
     private fun handleCompleteTodo(context: Context, todoId: String, notificationId: Int) {
         val pendingResult = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
                 var todoDao = todoDaoProvider?.invoke()
                 var historyDao = historyDaoProvider?.invoke()
                 if (todoDao == null || historyDao == null) {
-                    val passphraseProvider = DatabasePassphraseProvider(context)
+                    val passphraseProvider = com.example.butler.data.local.security.DatabasePassphraseProvider(context)
                     val passphrase = passphraseProvider.getOrGeneratePassphrase()
-                    val db = AppDatabase.getInstance(context, passphrase)
+                    val db = com.example.butler.data.local.AppDatabase.getInstance(context, passphrase)
                     if (todoDao == null) todoDao = db.todoDao()
                     if (historyDao == null) historyDao = db.operationHistoryDao()
                 }
                 val todo = todoDao.getTodoById(todoId)
-                if (todo != null && todo.status != TodoStatus.COMPLETED.name) {
-                    val previousJson = JSONObject().apply {
-                        put("id", todo.id)
-                        put("title", todo.title)
-                        put("status", todo.status)
-                        put("updatedAt", todo.updatedAt)
-                    }.toString()
-
-                    val updatedTodo = todo.copy(
-                        status = TodoStatus.COMPLETED.name,
+                if (todo != null && todo.status != com.example.butler.domain.model.TodoStatus.COMPLETED.name) {
+                    val oldDomain = todo.toDomainModel()
+                    val newDomain = oldDomain.copy(
+                        status = com.example.butler.domain.model.TodoStatus.COMPLETED,
                         updatedAt = System.currentTimeMillis()
                     )
-                    val newJson = JSONObject().apply {
-                        put("id", updatedTodo.id)
-                        put("title", updatedTodo.title)
-                        put("status", updatedTodo.status)
-                        put("updatedAt", updatedTodo.updatedAt)
-                    }.toString()
-                    val history = OperationHistoryEntity(
-                        id = UUID.randomUUID().toString(),
-                        timestamp = System.currentTimeMillis(),
-                        actor = "SYSTEM", // Fix M-004
-                        userInput = null,
-                        aiInterpretation = null,
+
+                    val previousJson = com.example.butler.domain.logic.CommandResolver.todoToJson(oldDomain)
+                    val newJson = com.example.butler.domain.logic.CommandResolver.todoToJson(newDomain)
+
+                    val history = com.example.butler.domain.model.OperationHistory(
+                        id = java.util.UUID.randomUUID().toString(),
+                        actor = com.example.butler.domain.model.Actor.SYSTEM,
                         actionType = "COMPLETE_TODO",
                         targetId = todoId,
                         previousStateJson = previousJson,
-                        newStateJson = newJson,
-                        status = "SUCCESS",
-                        isUndone = false
+                        newStateJson = newJson
                     )
-                    val db = AppDatabase.getInstance(context, DatabasePassphraseProvider(context).getOrGeneratePassphrase())
-                    db.withTransaction {
-                        todoDao.updateTodo(updatedTodo)
-                        historyDao.insertHistory(history)
-                    }
-                    if (notificationId != -1) {
-                        NotificationHelper.cancelNotification(context, notificationId)
+                    
+                    val command = com.example.butler.domain.logic.UpdateTodoCommand(
+                        history = history,
+                        newTodo = newDomain,
+                        oldTodo = oldDomain,
+                        todoDao = todoDao,
+                        inMemoryTodoList = null
+                    )
+                    val undoManager = com.example.butler.domain.logic.UndoManager(historyDao)
+                    val success = undoManager.executeCommand(command)
+
+                    if (success && notificationId != -1) {
+                        com.example.butler.util.NotificationHelper.cancelNotification(context, notificationId)
                     }
                 }
             } catch (e: Exception) {
-                // 安全にフォールバック
+                // Ignore
             } finally {
                 pendingResult.finish()
             }
         }
+    }
     }
 
     private fun handleSnoozeAlarm(context: Context, alarmId: String, notificationId: Int) {

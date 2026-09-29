@@ -138,9 +138,6 @@ class UndoManager(
         }
 
         // 成功した場合のみスタックを移動し、DBを更新
-        undoStack.removeAt(undoStack.size - 1)
-        redoStack.add(lastCommand)
-
         val updatedHistory = lastCommand.history.copy(isUndone = true)
         if (historyDao != null) {
             try {
@@ -149,6 +146,10 @@ class UndoManager(
                 throw IllegalStateException("Failed to update History DB", e)
             }
         }
+        undoStack.removeAt(undoStack.size - 1)
+        redoStack.add(lastCommand)
+
+        
 
         return@withContext true
     }
@@ -173,9 +174,6 @@ class UndoManager(
             return@withContext false
         }
 
-        redoStack.removeAt(redoStack.size - 1)
-        undoStack.add(nextCommand)
-
         val updatedHistory = nextCommand.history.copy(isUndone = false)
         if (historyDao != null) {
             try {
@@ -184,6 +182,10 @@ class UndoManager(
                 throw IllegalStateException("Failed to update History DB", e)
             }
         }
+        redoStack.removeAt(redoStack.size - 1)
+        undoStack.add(nextCommand)
+
+        
 
         return@withContext true
     }

@@ -5,7 +5,7 @@ import com.example.butler.domain.model.CalendarEvent
 import com.example.butler.domain.model.OperationHistory
 
 class CreateEventCommand(
-    override val history: OperationHistory,
+    override var history: OperationHistory,
     val event: CalendarEvent,
     private val calendarSyncManager: CalendarSyncManager,
     val allowDuplicate: Boolean = false

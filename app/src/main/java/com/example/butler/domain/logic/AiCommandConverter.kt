@@ -331,7 +331,7 @@ class AiCommandConverter(
             actionType = actionType,
             targetId = eventId,
             previousStateJson = calendarEventToJson(existing),
-            newStateJson = calendarEventToJson(newEvent)
+            newStateJson = rawJson
         )
 
         return DeleteEventCommand(

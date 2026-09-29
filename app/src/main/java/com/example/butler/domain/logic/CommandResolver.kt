@@ -3,6 +3,7 @@ package com.example.butler.domain.logic
 import org.json.JSONObject
 import com.example.butler.domain.model.CalendarEvent
 import com.example.butler.domain.model.TodoItem
+import com.example.butler.domain.model.TodoStatus
 import com.example.butler.domain.model.OperationHistory
 import com.example.butler.data.local.dao.TodoDao
 import com.example.butler.data.local.CalendarSyncManager
@@ -67,11 +68,28 @@ object CommandResolver {
         )
     }
 
-    private fun jsonToTodo(json: JSONObject): TodoItem {
+    fun todoToJson(todo: TodoItem): String {
+        return JSONObject().apply {
+            put("id", todo.id)
+            put("title", todo.title)
+            put("status", todo.status.name)
+            put("createdAt", todo.createdAt)
+            put("updatedAt", todo.updatedAt)
+            if (todo.detail != null) put("detail", todo.detail)
+            if (todo.dueDate != null) put("dueDate", todo.dueDate)
+            if (todo.estimatedMinutes != null) put("estimatedMinutes", todo.estimatedMinutes)
+            put("isHealthOrSafety", todo.isHealthOrSafety)
+            put("financialImpact", todo.financialImpact)
+            put("workImpact", todo.workImpact)
+            put("mentalLoad", todo.mentalLoad)
+        }.toString()
+    }
+    
+    fun jsonToTodo(json: JSONObject): TodoItem {
         return TodoItem(
             id = json.getString("id"),
             title = json.getString("title"),
-            status = json.getString("status"),
+            status = try { TodoStatus.valueOf(json.getString("status")) } catch (e: Exception) { TodoStatus.UNSTARTED },
             createdAt = json.getLong("createdAt"),
             updatedAt = json.getLong("updatedAt"),
             detail = json.optString("detail", null),
