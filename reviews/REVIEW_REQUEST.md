@@ -7,7 +7,7 @@ Persistence / Undo / CI Reliability Remediation Sprint
 fix/persistence-undo-ci-remediation
 
 ## Review Target Commit
-6e18eeee375a705a0f0c1f6ab3fa5d565f82fb9e
+3713e688b8a5b0252998ad61dfa0a98abc32e0a0
 
 ## 目的
 ChatGPT Review 10 (Target Commit: b478caae520a7286deb072e5c9af1aaf9f6c61ce, Result: FIX REQUIRED) における全 High (H-001 〜 H-010) および指摘事項の是正完了。
