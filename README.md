@@ -8,7 +8,7 @@
 
 本プロジェクトは、日々のToDo・スケジュール・リマインダー・外部連携を統合管理し、ユーザー専属のAI執事（またはメイド長）が行動支援を行うAndroidネイティブアプリです。
 
-- **アーキテクチャ**: Clean Architecture / MVVM / Kotlin Native (Jetpack Compose / Coroutines / Flow)
+- **アーキテクチャ**: Clean Architecture / MVVM / Kotlin Native (AppCompat / Material Design / XML Layout / RecyclerView / Coroutines / Flow)
 - **セキュリティ & プライバシー**: 完全ローカル暗号化DB (SQLCipher + Android KeyStore)、プライベート設計
 - **高信頼性実行**: Exact Alarm + BootReceiver による確実なリマインド・通知
 - **AI連携**: ChatGPT API 連携 / 構造化Tool Calling / ペルソナ制御 / 操作ポリシーガード

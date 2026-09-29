@@ -7,7 +7,7 @@ Source of Truth 統合 & P0/P1 是正 Sprint
 fix/source-of-truth-and-p0
 
 ## Review Target Commit
-f59ca40f0b71a3dd54f71750b011ebf267a7187e
+89f7ae2fceed4ae2e2c18052b9c2aeb8753c36fd
 
 ## 目的
 ChatGPT Review (Result: FIX REQUIRED) による指摘事項に基づき、Source of Truth の完全一本化、データ破損・消失リスク（P0）の根絶、および UI・DB・カレンダー・権限の配線不備（P1）の是正を完了。
