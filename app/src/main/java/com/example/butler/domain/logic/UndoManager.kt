@@ -141,7 +141,12 @@ class UndoManager(
             try {
                 historyDao.updateHistory(OperationHistoryEntity.fromDomainModel(updatedHistory))
             } catch (e: Exception) {
-                throw IllegalStateException("Failed to update History DB", e)
+                try {
+                    lastCommand.redo()
+                } catch (ce: Exception) {
+                    throw IllegalStateException("Failed to update History DB and failed to compensate", ce)
+                }
+                throw IllegalStateException("Failed to update History DB, external action reverted", e)
             }
         }
         undoStack.removeAt(undoStack.size - 1)
@@ -177,7 +182,12 @@ class UndoManager(
             try {
                 historyDao.updateHistory(OperationHistoryEntity.fromDomainModel(updatedHistory))
             } catch (e: Exception) {
-                throw IllegalStateException("Failed to update History DB", e)
+                try {
+                    nextCommand.undo()
+                } catch (ce: Exception) {
+                    throw IllegalStateException("Failed to update History DB and failed to compensate redo", ce)
+                }
+                throw IllegalStateException("Failed to update History DB, external redo reverted", e)
             }
         }
         redoStack.removeAt(redoStack.size - 1)

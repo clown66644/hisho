@@ -91,7 +91,7 @@ class NotificationActionReceiver(
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("NotificationAction", "Failed to complete Todo (ID: ), Error: ")
+                android.util.Log.e("NotificationAction", "Failed to complete todo. todoId=", e)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     android.widget.Toast.makeText(context, "操作を完了できませんでした", android.widget.Toast.LENGTH_SHORT).show()
                 }
@@ -144,7 +144,7 @@ class NotificationActionReceiver(
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("NotificationAction", "Failed to snooze Alarm (ID: ), Error: ")
+                android.util.Log.e("NotificationAction", "Failed to snooze alarm. alarmId=", e)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     android.widget.Toast.makeText(context, "操作を完了できませんでした", android.widget.Toast.LENGTH_SHORT).show()
                 }

@@ -49,7 +49,7 @@ object CommandResolver {
                 else -> null
             }
         } catch (e: Exception) {
-            android.util.Log.e("CommandResolver", "Failed to restore Command. OpID: , Action: , Error: ")
+            android.util.Log.e("CommandResolver", "Failed to restore command. operationId=, actionType=", e)
             null
         }
     }
