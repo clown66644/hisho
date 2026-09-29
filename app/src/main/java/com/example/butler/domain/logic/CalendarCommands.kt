@@ -7,13 +7,21 @@ import com.example.butler.domain.model.OperationHistory
 class CreateEventCommand(
     override val history: OperationHistory,
     val event: CalendarEvent,
-    private val calendarSyncManager: CalendarSyncManager
+    private val calendarSyncManager: CalendarSyncManager,
+    val allowDuplicate: Boolean = false
 ) : Command {
 
     private var generatedId: String? = null
+    var detectedDuplicates: List<CalendarEvent> = emptyList()
+        private set
 
     override suspend fun execute(): Boolean {
         if (event.title.isBlank() || event.endTime <= event.startTime) {
+            return false
+        }
+        val duplicates = calendarSyncManager.detectDuplicates(event)
+        if (duplicates.isNotEmpty() && !allowDuplicate) {
+            detectedDuplicates = duplicates
             return false
         }
         val id = calendarSyncManager.insertEvent(event)
@@ -56,12 +64,20 @@ class DeleteEventCommand(
     private val calendarSyncManager: CalendarSyncManager
 ) : Command {
 
+    var restoredEventId: String? = null
+        private set
+
     override suspend fun execute(): Boolean {
         return calendarSyncManager.deleteEvent(deletedEvent.id)
     }
 
     override suspend fun undo(): Boolean {
         val id = calendarSyncManager.insertEvent(deletedEvent)
-        return id != null
+        return if (id != null) {
+            restoredEventId = id
+            true
+        } else {
+            false
+        }
     }
 }

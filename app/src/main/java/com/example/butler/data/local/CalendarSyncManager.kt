@@ -105,10 +105,104 @@ class CalendarSyncManager(
     }
 
     /**
+     * ProviderのイベントIDから完全な予定スナップショットを取得する。
+     */
+    fun getEventById(eventId: String): CalendarEvent? {
+        if (inMemoryEvents != null) {
+            return inMemoryEvents.find { it.id == eventId || it.googleEventId == eventId }
+        }
+
+        if (!hasReadPermission() || context == null) {
+            return null
+        }
+
+        val projection = arrayOf(
+            CalendarContract.Events._ID,
+            CalendarContract.Events.TITLE,
+            CalendarContract.Events.DTSTART,
+            CalendarContract.Events.DTEND,
+            CalendarContract.Events.EVENT_LOCATION,
+            CalendarContract.Events.ALL_DAY
+        )
+
+        return try {
+            val eventIdLong = eventId.toLongOrNull() ?: return null
+            val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventIdLong)
+            val cursor = context.contentResolver.query(uri, projection, null, null, null)
+
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val idIdx = it.getColumnIndexOrThrow(CalendarContract.Events._ID)
+                    val titleIdx = it.getColumnIndexOrThrow(CalendarContract.Events.TITLE)
+                    val startIdx = it.getColumnIndexOrThrow(CalendarContract.Events.DTSTART)
+                    val endIdx = it.getColumnIndexOrThrow(CalendarContract.Events.DTEND)
+                    val locIdx = it.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION)
+                    val allDayIdx = it.getColumnIndexOrThrow(CalendarContract.Events.ALL_DAY)
+
+                    val id = it.getLong(idIdx).toString()
+                    val title = it.getString(titleIdx) ?: "無題"
+                    val dtStart = it.getLong(startIdx)
+                    val dtEnd = it.getLong(endIdx)
+                    val loc = it.getString(locIdx)
+                    val isAllDay = it.getInt(allDayIdx) == 1
+
+                    CalendarEvent(
+                        id = id,
+                        googleEventId = id,
+                        title = title,
+                        startTime = dtStart,
+                        endTime = dtEnd,
+                        location = loc,
+                        isAllDay = isAllDay
+                    )
+                } else null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 書き込み可能なカレンダーIDをクエリして返す。見つからない場合はフォールバックとして 1L を返す。
+     */
+    fun getWritableCalendarId(): Long {
+        if (context == null || !hasReadPermission()) return 1L
+
+        val projection = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+            CalendarContract.Calendars.IS_PRIMARY
+        )
+        val selection = "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ?"
+        val selectionArgs = arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString())
+
+        return try {
+            val cursor = context.contentResolver.query(
+                CalendarContract.Calendars.CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                "${CalendarContract.Calendars.IS_PRIMARY} DESC, ${CalendarContract.Calendars._ID} ASC"
+            )
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val idIdx = it.getColumnIndexOrThrow(CalendarContract.Calendars._ID)
+                    it.getLong(idIdx)
+                } else {
+                    1L
+                }
+            } ?: 1L
+        } catch (e: Exception) {
+            1L
+        }
+    }
+
+    /**
      * 予定をカレンダーに追加する。
      * @return 成功時はイベントID、失敗時は null
      */
-    fun insertEvent(event: CalendarEvent, calendarId: Long = 1L): String? {
+    fun insertEvent(event: CalendarEvent, calendarId: Long? = null): String? {
+        val targetCalendarId = calendarId ?: getWritableCalendarId()
         if (inMemoryEvents != null) {
             inMemoryEvents.removeIf { it.id == event.id }
             inMemoryEvents.add(event)
@@ -121,7 +215,7 @@ class CalendarSyncManager(
 
         return try {
             val values = ContentValues().apply {
-                put(CalendarContract.Events.CALENDAR_ID, calendarId)
+                put(CalendarContract.Events.CALENDAR_ID, targetCalendarId)
                 put(CalendarContract.Events.TITLE, event.title)
                 put(CalendarContract.Events.DTSTART, event.startTime)
                 put(CalendarContract.Events.DTEND, event.endTime)

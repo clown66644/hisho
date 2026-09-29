@@ -200,4 +200,131 @@ class CalendarSyncTest {
         }
         assertTrue(caught)
     }
+
+    @Test
+    fun testCreateEventCommandDuplicateCheckBlocks() = runBlocking {
+        val baseTime = 1770000000000L
+        val originalEvent = CalendarEvent(
+            id = "ev-dup-orig",
+            title = "重複テスト会議",
+            startTime = baseTime,
+            endTime = baseTime + 3600000L
+        )
+        syncManager.insertEvent(originalEvent)
+
+        val duplicateEvent = CalendarEvent(
+            id = "ev-dup-new",
+            title = "重複テスト会議",
+            startTime = baseTime + 1800000L,
+            endTime = baseTime + 5400000L
+        )
+        val history = OperationHistory(
+            id = "op-dup-create",
+            actor = Actor.USER,
+            actionType = "CREATE_EVENT",
+            targetId = duplicateEvent.id
+        )
+
+        // allowDuplicate = false の場合は重複検知で実行拒否される
+        val cmd = CreateEventCommand(history, duplicateEvent, syncManager, allowDuplicate = false)
+        assertFalse(cmd.execute())
+        assertEquals(1, cmd.detectedDuplicates.size)
+        assertEquals(1, inMemoryEvents.size)
+
+        // allowDuplicate = true の場合は作成可能
+        val cmdAllowed = CreateEventCommand(history, duplicateEvent, syncManager, allowDuplicate = true)
+        assertTrue(cmdAllowed.execute())
+        assertEquals(2, inMemoryEvents.size)
+    }
+
+    @Test
+    fun testSnapshotUpdateAndDeleteWithUndo() = runBlocking {
+        val baseTime = 1770000000000L
+        val event = CalendarEvent(
+            id = "ev-snapshot-target",
+            title = "元々の重要な予定",
+            startTime = baseTime,
+            endTime = baseTime + 3600000L,
+            location = "本社6F"
+        )
+        syncManager.insertEvent(event)
+
+        // 1. Snapshot Update: 翌月の日時へ移動（従来の範囲外検索バグを検証）
+        val nextMonthTime = baseTime + 86400000L * 30
+        val updateJson = """
+        {
+            "operationId": "op-snapshot-update",
+            "actionType": "UPDATE_EVENT",
+            "payload": {
+                "eventId": "ev-snapshot-target",
+                "title": "日時変更後の重要な予定",
+                "startTime": $nextMonthTime,
+                "endTime": ${nextMonthTime + 3600000L},
+                "location": "別館2F"
+            }
+        }
+        """.trimIndent()
+
+        val updateCmd = converter.convertJsonToCommand(updateJson, Actor.USER)
+        assertTrue(updateCmd is UpdateEventCommand)
+        assertEquals("元々の重要な予定", (updateCmd as UpdateEventCommand).oldEvent.title)
+        assertEquals("本社6F", updateCmd.oldEvent.location)
+
+        assertTrue(undoManager.executeCommand(updateCmd))
+        assertEquals("日時変更後の重要な予定", inMemoryEvents[0].title)
+
+        // Undo すると元の日時・場所・タイトルに完全に復元される
+        assertTrue(undoManager.undoLastCommand())
+        assertEquals("元々の重要な予定", inMemoryEvents[0].title)
+        assertEquals("本社6F", inMemoryEvents[0].location)
+        assertEquals(baseTime, inMemoryEvents[0].startTime)
+
+        // 2. Snapshot Delete: 実データをProviderから取得して削除
+        val deleteJson = """
+        {
+            "operationId": "op-snapshot-delete",
+            "actionType": "DELETE_EVENT",
+            "payload": {
+                "eventId": "ev-snapshot-target"
+            }
+        }
+        """.trimIndent()
+
+        val deleteCmd = converter.convertJsonToCommand(deleteJson, Actor.USER)
+        assertTrue(deleteCmd is DeleteEventCommand)
+        assertEquals("元々の重要な予定", (deleteCmd as DeleteEventCommand).deletedEvent.title)
+
+        assertTrue(undoManager.executeCommand(deleteCmd))
+        assertEquals(0, inMemoryEvents.size)
+
+        // Undo すると元データで再登録される
+        assertTrue(undoManager.undoLastCommand())
+        assertEquals(1, inMemoryEvents.size)
+        assertEquals("元々の重要な予定", inMemoryEvents[0].title)
+    }
+
+    @Test
+    fun testNonExistentEventUpdateThrowsNoSuchElementException() {
+        val nonExistentJson = """
+        {
+            "operationId": "op-not-found",
+            "actionType": "UPDATE_EVENT",
+            "payload": {
+                "eventId": "unknown-event-id",
+                "title": "存在しない予定",
+                "startTime": 1770000000000,
+                "endTime": 1770003600000
+            }
+        }
+        """.trimIndent()
+
+        var caught = false
+        try {
+            converter.convertJsonToCommand(nonExistentJson, Actor.USER)
+        } catch (e: NoSuchElementException) {
+            caught = true
+            assertTrue(e.message!!.contains("見つかりません"))
+        }
+        assertTrue(caught)
+    }
 }

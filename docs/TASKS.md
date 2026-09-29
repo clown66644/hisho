@@ -1,7 +1,24 @@
 # TASKS.md - タスク管理・進捗状況
 
 ## 現在のフェーズ
-**フェーズ2：実機能の追加・発展 (Kotlin Native Android)**
+**フェーズ2 是正：Source of Truth 統合 & P0/P1 是正 Sprint (完了)**
+
+---
+
+## 直近完了スプリント
+### Source of Truth 統合 & P0/P1 是正 Sprint (2026-09-29)
+- [x] 正式製品コードのトップレベル `/app` への完全集約・一本化
+- [x] P0-01: Room `fallbackToDestructiveMigration()` の完全削除と明示的マイグレーション（1→2, 2→3）の実装・テスト
+- [x] P0-02 & P0-03: カレンダー変更・削除 Undo の完全 Snapshot 方式化（Provider からの完全実データ取得、架空データ生成廃止、不在時例外拒否）
+- [x] P1-02 & P1-03: `MainViewModel.Factory` による暗号化 DB / Context 実配線
+- [x] P1-04: `BootReceiver` の安全な DB 取得フォールバックと `goAsync()` 適用によるプロセス保護
+- [x] P1-05: `MainActivity` での通知（Android 13+）およびカレンダーの実行時権限要求ダイアログ実装
+- [x] P1-06: 書き込み可能カレンダーの動的解決 (`getWritableCalendarId`)
+- [x] P1-07: `GenericConfirmationCommand` の no-op 成功廃止（偽成功の防止）
+- [x] P1-08: `CreateEventCommand` への重複予定ガード (`detectDuplicates`) 接続
+- [x] P1-09: `MainViewModel.undo()` での無関係な ToDo 削除廃止、コマンド種別に応じた安全な Undo 処理
+- [x] Security: `SettingsManager` 平文 SharedPreferences フォールバック廃止（Fail-closed 化）
+- [x] 全 46 件単体テスト PASSED、Lint 0 Errors、Debug APK 生成確認
 
 ---
 

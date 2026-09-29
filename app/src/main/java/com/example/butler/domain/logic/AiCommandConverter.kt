@@ -41,8 +41,8 @@ class CreateTodoCommand(
 class GenericConfirmationCommand(
     override val history: OperationHistory
 ) : Command {
-    override suspend fun execute(): Boolean = true
-    override suspend fun undo(): Boolean = true
+    override suspend fun execute(): Boolean = false
+    override suspend fun undo(): Boolean = false
 }
 
 class AiCommandConverter(
@@ -261,13 +261,16 @@ class AiCommandConverter(
             throw IllegalArgumentException("eventId は必須です。")
         }
 
-        val title = payload.optString("title", "").trim()
+        val existing = getCalendarManager().getEventById(eventId)
+            ?: throw NoSuchElementException("更新対象の予定 (ID: $eventId) がカレンダープロバイダに見つかりません。")
+
+        val title = payload.optString("title", existing.title).trim()
         if (title.isBlank()) {
             throw IllegalArgumentException("予定タイトルを空にすることはできません。")
         }
 
-        val startTime = payload.optLong("startTime", -1L)
-        val endTime = payload.optLong("endTime", -1L)
+        val startTime = if (payload.has("startTime")) payload.getLong("startTime") else existing.startTime
+        val endTime = if (payload.has("endTime")) payload.getLong("endTime") else existing.endTime
 
         if (startTime < 946684800000L || endTime < 946684800000L) {
             throw IllegalArgumentException("異常な日時指定です。")
@@ -278,27 +281,16 @@ class AiCommandConverter(
 
         val location = if (payload.has("location") && !payload.isNull("location")) {
             payload.getString("location")
-        } else null
+        } else existing.location
 
-        val isAllDay = payload.optBoolean("isAllDay", false)
+        val isAllDay = if (payload.has("isAllDay")) payload.getBoolean("isAllDay") else existing.isAllDay
 
-        val newEvent = CalendarEvent(
-            id = eventId,
-            googleEventId = eventId,
+        val newEvent = existing.copy(
             title = title,
             startTime = startTime,
             endTime = endTime,
             location = location,
             isAllDay = isAllDay
-        )
-
-        val existing = getCalendarManager().getEvents(startTime - 86400000, endTime + 86400000).find { it.id == eventId }
-        val oldEvent = existing ?: CalendarEvent(
-            id = eventId,
-            googleEventId = eventId,
-            title = "変更前の予定",
-            startTime = startTime,
-            endTime = endTime
         )
 
         val history = OperationHistory(
@@ -312,7 +304,7 @@ class AiCommandConverter(
         return UpdateEventCommand(
             history = history,
             newEvent = newEvent,
-            oldEvent = oldEvent,
+            oldEvent = existing,
             calendarSyncManager = getCalendarManager()
         )
     }
@@ -329,17 +321,8 @@ class AiCommandConverter(
             throw IllegalArgumentException("eventId は必須です。")
         }
 
-        val title = payload.optString("title", "削除された予定")
-        val startTime = payload.optLong("startTime", System.currentTimeMillis())
-        val endTime = payload.optLong("endTime", startTime + 3600000)
-
-        val deletedEvent = CalendarEvent(
-            id = eventId,
-            googleEventId = eventId,
-            title = title,
-            startTime = startTime,
-            endTime = endTime
-        )
+        val existing = getCalendarManager().getEventById(eventId)
+            ?: throw NoSuchElementException("削除対象の予定 (ID: $eventId) がカレンダープロバイダに見つかりません。")
 
         val history = OperationHistory(
             id = operationId,
@@ -351,7 +334,7 @@ class AiCommandConverter(
 
         return DeleteEventCommand(
             history = history,
-            deletedEvent = deletedEvent,
+            deletedEvent = existing,
             calendarSyncManager = getCalendarManager()
         )
     }

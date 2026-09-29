@@ -12,7 +12,7 @@ class SettingsManager(context: Context) {
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
-    private val prefs: SharedPreferences = try {
+    private val encryptedPrefs: SharedPreferences? = try {
         EncryptedSharedPreferences.create(
             context,
             "secret_user_settings_prefs",
@@ -21,19 +21,23 @@ class SettingsManager(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
-        context.getSharedPreferences("user_settings_fallback_prefs", Context.MODE_PRIVATE)
+        null
     }
 
+    fun isSecureStorageAvailable(): Boolean = encryptedPrefs != null
+
     fun getApiKey(): String {
-        return prefs.getString("KEY_OPENAI_API", "") ?: ""
+        return encryptedPrefs?.getString("KEY_OPENAI_API", "") ?: ""
     }
 
     fun setApiKey(apiKey: String) {
+        val prefs = encryptedPrefs
+            ?: throw SecurityException("暗号化ストレージが初期化できないため、APIキーを保存できません。")
         prefs.edit().putString("KEY_OPENAI_API", apiKey).apply()
     }
 
     fun getSelectedPersona(): PersonaType {
-        val name = prefs.getString("KEY_SELECTED_PERSONA", PersonaType.BUTLER.name)
+        val name = encryptedPrefs?.getString("KEY_SELECTED_PERSONA", PersonaType.BUTLER.name)
         return try {
             PersonaType.valueOf(name ?: PersonaType.BUTLER.name)
         } catch (e: Exception) {
@@ -42,6 +46,6 @@ class SettingsManager(context: Context) {
     }
 
     fun setSelectedPersona(persona: PersonaType) {
-        prefs.edit().putString("KEY_SELECTED_PERSONA", persona.name).apply()
+        encryptedPrefs?.edit()?.putString("KEY_SELECTED_PERSONA", persona.name)?.apply()
     }
 }

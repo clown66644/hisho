@@ -1,5 +1,11 @@
 package com.example.butler.ui
 
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.example.butler.data.local.AppDatabase
+import com.example.butler.data.local.CalendarSyncManager
+import com.example.butler.data.local.dao.TodoDao
 import com.example.butler.data.remote.PersonaType
 import com.example.butler.domain.logic.AiCommandConverter
 import com.example.butler.domain.logic.ChangePersonaCommand
@@ -20,12 +26,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class MainViewModel(
     val undoManager: UndoManager = UndoManager(),
-    private val converter: AiCommandConverter = AiCommandConverter()
-) {
+    private val todoDao: TodoDao? = null,
+    private val calendarSyncManager: CalendarSyncManager? = null,
+    private val converter: AiCommandConverter = AiCommandConverter(
+        todoDao = todoDao,
+        calendarSyncManager = calendarSyncManager
+    )
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
@@ -33,6 +45,23 @@ class MainViewModel(
     private val currentTodoList = mutableListOf<TodoItem>()
     private val calculator = PriorityCalculator()
     private val processingCardIds = mutableSetOf<String>()
+
+    init {
+        loadTodos()
+    }
+
+    fun loadTodos() {
+        if (todoDao != null) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val list = todoDao.getAllTodos().map { it.toDomainModel() }
+                withContext(Dispatchers.Main) {
+                    currentTodoList.clear()
+                    currentTodoList.addAll(list)
+                    refreshCards()
+                }
+            }
+        }
+    }
 
     fun changePersona(newPersona: PersonaType) {
         CoroutineScope(Dispatchers.Main).launch {
@@ -121,8 +150,12 @@ class MainViewModel(
         val success = undoManager.executeCommand(command)
         if (success) {
             if (command is CreateTodoCommand) {
-                currentTodoList.add(command.todo)
-                refreshCards()
+                if (todoDao != null) {
+                    loadTodos()
+                } else {
+                    currentTodoList.add(command.todo)
+                    refreshCards()
+                }
             }
         }
         updateUndoRedoStatus()
@@ -142,6 +175,10 @@ class MainViewModel(
                 _uiState.value = _uiState.value.copy(
                     cards = _uiState.value.cards.filter { it.id != cardId },
                     statusMessage = "操作を承認・実行しました。"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "操作の実行に失敗しました。必要な情報が不足しているか無効です。"
                 )
             }
             return success
@@ -165,12 +202,18 @@ class MainViewModel(
     }
 
     suspend fun undo(): Boolean {
+        val lastCommand = undoManager.peekUndoCommand()
         val success = undoManager.undoLastCommand()
         if (success) {
-            if (currentTodoList.isNotEmpty()) {
-                currentTodoList.removeAt(currentTodoList.size - 1)
+            if (todoDao != null) {
+                loadTodos()
+            } else {
+                // DB無しのインメモリ環境（テスト等）では、直前操作がToDo作成だった場合のみリストから取り除く
+                if (lastCommand is CreateTodoCommand) {
+                    currentTodoList.removeIf { it.id == lastCommand.todo.id }
+                }
+                refreshCards()
             }
-            refreshCards()
         }
         updateUndoRedoStatus()
         return success
@@ -179,7 +222,11 @@ class MainViewModel(
     suspend fun redo(): Boolean {
         val success = undoManager.redoNextCommand()
         if (success) {
-            refreshCards()
+            if (todoDao != null) {
+                loadTodos()
+            } else {
+                refreshCards()
+            }
         }
         updateUndoRedoStatus()
         return success
@@ -215,5 +262,30 @@ class MainViewModel(
             canUndo = undoManager.canUndo(),
             canRedo = undoManager.canRedo()
         )
+    }
+
+    class Factory(
+        private val context: Context
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            val db = try {
+                AppDatabase.getInstance(context)
+            } catch (e: Exception) {
+                null
+            }
+            val todoDao = db?.todoDao()
+            val calendarSyncManager = CalendarSyncManager(context.applicationContext)
+            val converter = AiCommandConverter(
+                todoDao = todoDao,
+                calendarSyncManager = calendarSyncManager
+            )
+            return MainViewModel(
+                undoManager = UndoManager(),
+                todoDao = todoDao,
+                calendarSyncManager = calendarSyncManager,
+                converter = converter
+            ) as T
+        }
     }
 }

@@ -113,6 +113,7 @@ class UndoManager(
 
     fun canUndo(): Boolean = undoStack.isNotEmpty()
     fun canRedo(): Boolean = redoStack.isNotEmpty()
+    fun peekUndoCommand(): Command? = undoStack.lastOrNull()
 
     /**
      * Undo 実行

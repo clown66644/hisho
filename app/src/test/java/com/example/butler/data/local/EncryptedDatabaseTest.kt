@@ -91,4 +91,25 @@ class EncryptedDatabaseTest {
         }
         assertFalse("キー破損時に無断でDB削除・初期化を行わないこと", isDbDestroyed)
     }
+
+    @Test
+    fun testMigrationsSqlExecution() {
+        val executedSqls = mutableListOf<String>()
+        val fakeDb = java.lang.reflect.Proxy.newProxyInstance(
+            androidx.sqlite.db.SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(androidx.sqlite.db.SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL") {
+                executedSqls.add(args[0] as String)
+            }
+            null
+        } as androidx.sqlite.db.SupportSQLiteDatabase
+
+        AppDatabase.MIGRATION_1_2.migrate(fakeDb)
+        assertTrue(executedSqls.any { it.contains("CREATE TABLE IF NOT EXISTS `operation_histories`") })
+
+        executedSqls.clear()
+        AppDatabase.MIGRATION_2_3.migrate(fakeDb)
+        assertTrue(executedSqls.any { it.contains("CREATE TABLE IF NOT EXISTS `alarms`") })
+    }
 }

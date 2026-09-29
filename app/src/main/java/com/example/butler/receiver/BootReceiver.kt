@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.butler.alarm.AlarmScheduler
+import com.example.butler.data.local.AppDatabase
 import com.example.butler.data.local.dao.AlarmDao
 import com.example.butler.worker.CalendarSyncWorker
 import kotlinx.coroutines.CoroutineScope
@@ -29,10 +30,18 @@ class BootReceiver(
             if (!scheduler.canScheduleExactAlarms()) return
 
             val now = System.currentTimeMillis()
+            val pendingResult = goAsync()
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val alarmDao = alarmDaoProvider?.invoke() ?: return@launch
+                    val alarmDao = alarmDaoProvider?.invoke() ?: run {
+                        try {
+                            AppDatabase.getInstance(context).alarmDao()
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } ?: return@launch
+
                     val pendingAlarms = alarmDao.getPendingFutureAlarms(now)
 
                     pendingAlarms.forEach { alarm ->
@@ -48,6 +57,12 @@ class BootReceiver(
                     }
                 } catch (e: Exception) {
                     // 安全にエラー復帰
+                } finally {
+                    try {
+                        pendingResult.finish()
+                    } catch (e: Exception) {
+                        // ignore
+                    }
                 }
             }
         }
