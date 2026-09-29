@@ -94,10 +94,17 @@ class UndoManager(
 
         if (!dbSaved) {
             // 履歴保存失敗時に対象変更の補償処理（undo）を行い、成功状態にしない
-            try {
+            val compensated = try {
                 command.undo()
-            } catch (e: Exception) {
-                // 補償失敗時もメモリ整合性を維持
+            } catch (ce: Exception) {
+                throw IllegalStateException(
+                    "History DB insert failed and compensation threw an exception", ce
+                )
+            }
+            if (!compensated) {
+                throw IllegalStateException(
+                    "History DB insert failed and compensation returned false"
+                )
             }
             return@withContext false
         }
@@ -141,12 +148,22 @@ class UndoManager(
             try {
                 historyDao.updateHistory(OperationHistoryEntity.fromDomainModel(updatedHistory))
             } catch (e: Exception) {
-                try {
+                // DB更新失敗: 外部Undoを元に戻す(Compensation)
+                val compensated = try {
                     lastCommand.redo()
                 } catch (ce: Exception) {
-                    throw IllegalStateException("Failed to update History DB and failed to compensate", ce)
+                    throw IllegalStateException(
+                        "History DB update failed and compensation threw an exception", ce
+                    )
                 }
-                throw IllegalStateException("Failed to update History DB, external action reverted", e)
+                if (!compensated) {
+                    throw IllegalStateException(
+                        "History DB update failed and compensation returned false"
+                    )
+                }
+                throw IllegalStateException(
+                    "History DB update failed; external undo was compensated", e
+                )
             }
         }
         undoStack.removeAt(undoStack.size - 1)
@@ -182,12 +199,22 @@ class UndoManager(
             try {
                 historyDao.updateHistory(OperationHistoryEntity.fromDomainModel(updatedHistory))
             } catch (e: Exception) {
-                try {
+                // DB更新失敗: 外部Redoを元に戻す(Compensation)
+                val compensated = try {
                     nextCommand.undo()
                 } catch (ce: Exception) {
-                    throw IllegalStateException("Failed to update History DB and failed to compensate redo", ce)
+                    throw IllegalStateException(
+                        "History DB update failed and redo compensation threw an exception", ce
+                    )
                 }
-                throw IllegalStateException("Failed to update History DB, external redo reverted", e)
+                if (!compensated) {
+                    throw IllegalStateException(
+                        "History DB update failed and redo compensation returned false"
+                    )
+                }
+                throw IllegalStateException(
+                    "History DB update failed; external redo was compensated", e
+                )
             }
         }
         redoStack.removeAt(redoStack.size - 1)
