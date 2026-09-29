@@ -251,7 +251,7 @@ open class CalendarSyncManager(
                 put(CalendarContract.Events.DTEND, event.endTime)
                 put(CalendarContract.Events.EVENT_LOCATION, event.location)
                 put(CalendarContract.Events.ALL_DAY, if (event.isAllDay) 1 else 0)
-                put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+                put(CalendarContract.Events.EVENT_TIMEZONE, event.timezone ?: TimeZone.getDefault().id)
             }
 
             val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)

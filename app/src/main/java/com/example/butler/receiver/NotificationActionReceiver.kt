@@ -3,6 +3,7 @@ package com.example.butler.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.room.withTransaction
 import com.example.butler.alarm.AlarmScheduler
 import com.example.butler.alarm.ScheduleResult
 import com.example.butler.data.local.AppDatabase
@@ -88,7 +89,7 @@ class NotificationActionReceiver(
                         isUndone = false
                     )
                     val db = AppDatabase.getInstance(context, DatabasePassphraseProvider(context).getOrGeneratePassphrase())
-                    db.runInTransaction {
+                    db.withTransaction {
                         todoDao.updateTodo(updatedTodo)
                         historyDao.insertHistory(history)
                     }
@@ -136,9 +137,13 @@ class NotificationActionReceiver(
                     )
 
                     if (result is ScheduleResult.Scheduled) {
-                        dao.insertAlarm(snoozedAlarm)
-                        if (notificationId != -1) {
-                            NotificationHelper.cancelNotification(context, notificationId)
+                        try {
+                            dao.insertAlarm(snoozedAlarm)
+                            if (notificationId != -1) {
+                                NotificationHelper.cancelNotification(context, notificationId)
+                            }
+                        } catch (e: Exception) {
+                            scheduler.cancelAlarm(newAlarmId)
                         }
                     }
                 }

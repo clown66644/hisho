@@ -17,9 +17,11 @@ class UpdateTodoCommand(
         if (todoDao != null) {
             todoDao.updateTodo(TodoEntity.fromDomainModel(newTodo))
         }
-        val idx = inMemoryTodoList?.indexOfFirst { it.id == newTodo.id }
-        if (idx != null && idx >= 0) {
-            inMemoryTodoList[idx] = newTodo
+        inMemoryTodoList?.let { list ->
+            val idx = list.indexOfFirst { it.id == newTodo.id }
+            if (idx >= 0) {
+                list[idx] = newTodo
+            }
         }
         return true
     }
@@ -28,9 +30,11 @@ class UpdateTodoCommand(
         if (todoDao != null) {
             todoDao.updateTodo(TodoEntity.fromDomainModel(oldTodo))
         }
-        val idx = inMemoryTodoList?.indexOfFirst { it.id == oldTodo.id }
-        if (idx != null && idx >= 0) {
-            inMemoryTodoList[idx] = oldTodo
+        inMemoryTodoList?.let { list ->
+            val idx = list.indexOfFirst { it.id == oldTodo.id }
+            if (idx >= 0) {
+                list[idx] = oldTodo
+            }
         }
         return true
     }

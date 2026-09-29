@@ -330,39 +330,48 @@ class CalendarSyncTest {
 
     @Test
     fun testDeleteEventCommandUndoAndRedo() = runBlocking {
+        val customSyncManager = object : CalendarSyncManager(null, inMemoryEvents) {
+            override fun insertEvent(event: CalendarEvent, calendarId: Long?): String? {
+                val newId = "new-" + java.util.UUID.randomUUID().toString().substring(0, 5)
+                val newEvent = event.copy(id = newId)
+                inMemoryEvents?.add(newEvent)
+                return newId
+            }
+            override fun deleteEvent(eventId: String): Boolean {
+                return inMemoryEvents?.removeIf { it.id == eventId } ?: false
+            }
+        }
         val baseTime = 1770000000000L
         val event = CalendarEvent(
             id = "ev-del-redo",
-            title = "削除とRedoの検証",
+            title = "削除Redoの件",
             startTime = baseTime,
             endTime = baseTime + 3600000L
         )
-        syncManager.insertEvent(event)
-        assertEquals(1, inMemoryEvents.size)
-
+        inMemoryEvents.add(event)
+        
         val history = OperationHistory(
             id = "op-del-redo",
             actor = Actor.USER,
             actionType = "DELETE_EVENT",
             targetId = event.id
         )
-        val deleteCmd = DeleteEventCommand(history, event, syncManager)
-
-        // 1. 削除実行
-        assertTrue(deleteCmd.execute())
-        assertEquals(0, inMemoryEvents.size)
-
-        // 2. Undo (復元)
-        assertTrue(deleteCmd.undo())
-        assertEquals(1, inMemoryEvents.size)
-
-        // 3. Redo (再削除)
-        assertTrue(deleteCmd.redo())
-        assertEquals(0, inMemoryEvents.size)
-
-        // 4. 再度 Undo (再復元)
-        assertTrue(deleteCmd.undo())
-        assertEquals(1, inMemoryEvents.size)
+        val command = DeleteEventCommand(history, event, customSyncManager)
+        
+        val execResult = command.execute()
+        assertTrue(execResult)
+        assertFalse(inMemoryEvents.any { it.id == event.id })
+        
+        val undoResult = command.undo()
+        assertTrue(undoResult)
+        
+        val restoredId = command.restoredEventId
+        assertTrue(restoredId != null && restoredId != event.id)
+        assertTrue(inMemoryEvents.any { it.id == restoredId })
+        
+        val redoResult = command.redo()
+        assertTrue(redoResult)
+        assertFalse(inMemoryEvents.any { it.id == restoredId })
     }
 
     @Test

@@ -61,6 +61,7 @@ class UndoManager(
      * コマンドの実行 & トランザクション保存
      */
     suspend fun executeCommand(command: Command): Boolean = withContext(Dispatchers.IO) {
+        if (historyDao != null) { try { historyDao.getHistoryById(command.history.id) } catch (e: Exception) { throw IllegalStateException("DB is unavailable", e) } }
         val opId = command.history.id
 
         // 二重登録・二重実行のブロック（冪等ガード）
@@ -124,6 +125,7 @@ class UndoManager(
         // スタックから先走って削除せず参照
         val lastCommand = undoStack.last()
 
+        if (historyDao != null) { try { historyDao.getHistoryById(lastCommand.history.id) } catch (e: Exception) { throw IllegalStateException("DB is unavailable", e) } }
         val undoSuccess = try {
             lastCommand.undo()
         } catch (e: Exception) {
@@ -159,6 +161,7 @@ class UndoManager(
 
         val nextCommand = redoStack.last()
 
+        if (historyDao != null) { try { historyDao.getHistoryById(nextCommand.history.id) } catch (e: Exception) { throw IllegalStateException("DB is unavailable", e) } }
         val redoSuccess = try {
             nextCommand.redo()
         } catch (e: Exception) {
@@ -194,7 +197,7 @@ class UndoManager(
         val undoableList = try {
             historyDao.getUndoableHistories().map { it.toDomainModel() }
         } catch (e: Exception) {
-            emptyList()
+            throw IllegalStateException("Failed to restore history", e)
         }
 
         var restoredCount = 0

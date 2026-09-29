@@ -187,7 +187,7 @@ class AiCommandConverter(
             actor = actor,
             actionType = actionType,
             targetId = todo.id,
-            newStateJson = rawJson
+            newStateJson = todoToJson(todo)
         )
 
         return CreateTodoCommand(
@@ -239,7 +239,7 @@ class AiCommandConverter(
             actor = actor,
             actionType = actionType,
             targetId = event.id,
-            newStateJson = rawJson
+            newStateJson = calendarEventToJson(event)
         )
 
         return CreateEventCommand(
@@ -299,7 +299,7 @@ class AiCommandConverter(
             actionType = actionType,
             targetId = eventId,
             previousStateJson = calendarEventToJson(existing),
-            newStateJson = rawJson
+            newStateJson = calendarEventToJson(newEvent)
         )
 
         return UpdateEventCommand(
@@ -331,7 +331,7 @@ class AiCommandConverter(
             actionType = actionType,
             targetId = eventId,
             previousStateJson = calendarEventToJson(existing),
-            newStateJson = rawJson
+            newStateJson = calendarEventToJson(newEvent)
         )
 
         return DeleteEventCommand(
@@ -350,6 +350,26 @@ class AiCommandConverter(
             put("endTime", event.endTime)
             put("location", event.location)
             put("isAllDay", event.isAllDay)
+            if (event.calendarId != null) put("calendarId", event.calendarId)
+            if (event.timezone != null) put("timezone", event.timezone)
+            if (event.recurrenceRule != null) put("recurrenceRule", event.recurrenceRule)
         }.toString()
     }
 }
+
+    private fun todoToJson(todo: com.example.butler.domain.model.TodoItem): String {
+        return JSONObject().apply {
+            put("id", todo.id)
+            put("title", todo.title)
+            put("status", todo.status)
+            put("createdAt", todo.createdAt)
+            put("updatedAt", todo.updatedAt)
+            if (todo.detail != null) put("detail", todo.detail)
+            if (todo.dueDate != null) put("dueDate", todo.dueDate)
+            if (todo.estimatedMinutes != null) put("estimatedMinutes", todo.estimatedMinutes)
+            put("isHealthOrSafety", todo.isHealthOrSafety)
+            put("financialImpact", todo.financialImpact)
+            put("workImpact", todo.workImpact)
+            put("mentalLoad", todo.mentalLoad)
+        }.toString()
+    }

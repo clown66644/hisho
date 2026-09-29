@@ -54,17 +54,23 @@ class MainViewModel(
             )
         } else {
             CoroutineScope(Dispatchers.IO).launch {
-                undoManager.initialize()
-                undoManager.restoreFromHistory { history ->
-                    com.example.butler.domain.logic.CommandResolver.restoreCommand(
-                        history,
-                        todoDao,
-                        currentTodoList,
-                        calendarSyncManager ?: com.example.butler.data.local.CalendarSyncManager()
+                try {
+                    undoManager.initialize()
+                    undoManager.restoreFromHistory { history ->
+                        com.example.butler.domain.logic.CommandResolver.restoreCommand(
+                            history,
+                            todoDao,
+                            currentTodoList,
+                            calendarSyncManager ?: com.example.butler.data.local.CalendarSyncManager()
+                        )
+                    }
+                    updateUndoRedoStatus()
+                    loadTodosInternal()
+                } catch (e: Exception) {
+                    _uiState.value = _uiState.value.copy(
+                        statusMessage = "履歴DBの読み込みに失敗しました。安全のため機能を停止しています。"
                     )
                 }
-                updateUndoRedoStatus()
-                loadTodosInternal()
             }
         }
     }

@@ -1,6 +1,5 @@
 package com.example.butler.domain.logic
 
-// Let's create a file CommandResolver.kt in the same package to keep it clean!
 import org.json.JSONObject
 import com.example.butler.domain.model.CalendarEvent
 import com.example.butler.domain.model.TodoItem
@@ -18,20 +17,21 @@ object CommandResolver {
         return try {
             when (history.actionType) {
                 "CREATE_TODO" -> {
-                    // For create, targetId is todo.id. We can't fully rebuild the original todo from raw json without re-parsing.
-                    // But we don't strictly need to undo CREATE_TODO across restarts for now, or we can just parse it from rawJson.
-                    null
+                    val newJson = JSONObject(history.newStateJson ?: return null)
+                    val todo = jsonToTodo(newJson)
+                    CreateTodoCommand(history, todo, todoDao, inMemoryTodoList)
                 }
                 "CREATE_EVENT" -> {
-                    null // skip for now
+                    val newJson = JSONObject(history.newStateJson ?: return null)
+                    val event = jsonToCalendarEvent(newJson)
+                    CreateEventCommand(history, event, calendarSyncManager)
                 }
                 "UPDATE_EVENT" -> {
                     val oldJson = JSONObject(history.previousStateJson ?: return null)
                     val oldEvent = jsonToCalendarEvent(oldJson)
                     val newJson = JSONObject(history.newStateJson ?: return null)
-                    // If newStateJson is raw AI command, we can't easily parse it without the existing event.
-                    // Let's just return null for UPDATE_EVENT restore for now, or just do DELETE_EVENT first.
-                    null
+                    val newEvent = jsonToCalendarEvent(newJson)
+                    UpdateEventCommand(history, newEvent, oldEvent, calendarSyncManager)
                 }
                 "DELETE_EVENT" -> {
                     val oldJson = JSONObject(history.previousStateJson ?: return null)
@@ -39,8 +39,11 @@ object CommandResolver {
                     DeleteEventCommand(history, deletedEvent, calendarSyncManager)
                 }
                 "COMPLETE_TODO" -> {
-                    // We need to add CompleteTodoCommand!
-                    null
+                    val oldJson = JSONObject(history.previousStateJson ?: return null)
+                    val oldTodo = jsonToTodo(oldJson)
+                    val newJson = JSONObject(history.newStateJson ?: return null)
+                    val newTodo = jsonToTodo(newJson)
+                    UpdateTodoCommand(history, newTodo, oldTodo, todoDao, inMemoryTodoList)
                 }
                 else -> null
             }
@@ -61,6 +64,23 @@ object CommandResolver {
             calendarId = if (json.has("calendarId")) json.getLong("calendarId") else null,
             timezone = json.optString("timezone", null),
             recurrenceRule = json.optString("recurrenceRule", null)
+        )
+    }
+
+    private fun jsonToTodo(json: JSONObject): TodoItem {
+        return TodoItem(
+            id = json.getString("id"),
+            title = json.getString("title"),
+            status = json.getString("status"),
+            createdAt = json.getLong("createdAt"),
+            updatedAt = json.getLong("updatedAt"),
+            detail = json.optString("detail", null),
+            dueDate = if (json.has("dueDate")) json.getLong("dueDate") else null,
+            estimatedMinutes = if (json.has("estimatedMinutes")) json.getInt("estimatedMinutes") else null,
+            isHealthOrSafety = json.getBoolean("isHealthOrSafety"),
+            financialImpact = json.getInt("financialImpact"),
+            workImpact = json.getInt("workImpact"),
+            mentalLoad = json.getInt("mentalLoad")
         )
     }
 }
