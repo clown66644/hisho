@@ -91,11 +91,15 @@ class NotificationActionReceiver(
                     }
                 }
             } catch (e: Exception) {
-                // Ignore
+                android.util.Log.e("NotificationAction", "Failed to complete Todo (ID: ), Error: ")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "操作を完了できませんでした", android.widget.Toast.LENGTH_SHORT).show()
+                }
             } finally {
                 pendingResult.finish()
             }
-            }
+                    }
+    }
 
     private fun handleSnoozeAlarm(context: Context, alarmId: String, notificationId: Int) {
         val pendingResult = goAsync()
@@ -140,7 +144,10 @@ class NotificationActionReceiver(
                     }
                 }
             } catch (e: Exception) {
-                // 安全にフォールバック
+                android.util.Log.e("NotificationAction", "Failed to snooze Alarm (ID: ), Error: ")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "操作を完了できませんでした", android.widget.Toast.LENGTH_SHORT).show()
+                }
             } finally {
                 pendingResult.finish()
             }
