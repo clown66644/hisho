@@ -82,6 +82,14 @@ object CommandResolver {
             put("financialImpact", todo.financialImpact)
             put("workImpact", todo.workImpact)
             put("mentalLoad", todo.mentalLoad)
+            
+            if (todo.memo != null) put("memo", todo.memo)
+            if (todo.scheduledStartTime != null) put("scheduledStartTime", todo.scheduledStartTime)
+            if (todo.scheduledEndTime != null) put("scheduledEndTime", todo.scheduledEndTime)
+            put("irretrievableLoss", todo.irretrievableLoss)
+            put("requiredStamina", todo.requiredStamina)
+            put("isPinnedPriority", todo.isPinnedPriority)
+            if (todo.pinnedPriority != null) put("pinnedPriority", todo.pinnedPriority.name)
         }.toString()
     }
     
@@ -98,7 +106,15 @@ object CommandResolver {
             isHealthOrSafety = json.getBoolean("isHealthOrSafety"),
             financialImpact = json.getInt("financialImpact"),
             workImpact = json.getInt("workImpact"),
-            mentalLoad = json.getInt("mentalLoad")
+            mentalLoad = json.getInt("mentalLoad"),
+            
+            memo = json.optString("memo", null),
+            scheduledStartTime = if (json.has("scheduledStartTime")) json.getLong("scheduledStartTime") else null,
+            scheduledEndTime = if (json.has("scheduledEndTime")) json.getLong("scheduledEndTime") else null,
+            irretrievableLoss = json.optBoolean("irretrievableLoss", false),
+            requiredStamina = json.optInt("requiredStamina", 1),
+            isPinnedPriority = json.optBoolean("isPinnedPriority", false),
+            pinnedPriority = if (json.has("pinnedPriority")) com.example.butler.domain.model.PriorityLevel.valueOf(json.getString("pinnedPriority")) else null
         )
     }
 }

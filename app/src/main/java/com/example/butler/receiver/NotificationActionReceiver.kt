@@ -95,9 +95,7 @@ class NotificationActionReceiver(
             } finally {
                 pendingResult.finish()
             }
-        }
-    }
-    }
+            }
 
     private fun handleSnoozeAlarm(context: Context, alarmId: String, notificationId: Int) {
         val pendingResult = goAsync()

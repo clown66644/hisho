@@ -32,9 +32,7 @@ class UndoManager(
                 saved.forEach {
                     executedOperationIds.add(it.id)
                 }
-            } catch (e: Exception) {
-                // DB読み込みエラー時は安全に続行
-            }
+            } catch (e: Exception) { throw IllegalStateException("Failed to initialize History DB", e) }
         }
     }
 

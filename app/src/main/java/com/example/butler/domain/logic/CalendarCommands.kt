@@ -34,6 +34,10 @@ class CreateEventCommand(
         val id = calendarSyncManager.insertEvent(event)
         return if (id != null) {
             generatedId = id
+            val newJson = org.json.JSONObject(history.newStateJson).apply {
+                put("id", id)
+            }.toString()
+            history = history.copy(targetId = id, newStateJson = newJson)
             true
         } else {
             false
