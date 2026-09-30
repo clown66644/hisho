@@ -10,7 +10,7 @@ Base SHA:
 b478caae520a7286deb072e5c9af1aaf9f6c61ce
 
 Code Head SHA:
-3fb9189a7f84837cc17b06412a0b19e8894af5d9
+96b4bb5efe13f9382cdd8d4ffa6ed9d4e7e70aac
 
 Push確認:
 SUCCESS
@@ -19,11 +19,9 @@ GitHub Actions:
 PENDING
 
 変更目的:
-Persistence / Undo / CI Reliability Remediation (Review 17 指摘対応)
+Persistence / Undo / CI Reliability Remediation (Review 18 指摘対応)
 
 重点確認:
-- H-001A: Undo/Redo/ExecuteのCompensation戻り値Boolean確認を追加。falseの場合もIllegalStateExceptionを送出。
-- H-001B: Calendar Provider IDが変わるCompensationの問題に対し、Compensation自体の失敗を明示的に区別。
-- M-001: CommandResolverのログにoperationIdとactionTypeを正しく出力（Kotlin文字列テンプレートではなくString concatenationを使用し、PowerShellの$変数補間の問題を根本解消）。
-- M-002: NotificationActionReceiverのログにtodoIdやalarmIdを正しく出力（同上の修正）。
-- ビルド: NotificationActionReceiver.ktの余分なbrace構造を修正（L100付近）。
+- H-001: CreateEventCommandにてsnapshot JSONの生成をCalendar Provider操作の前に移動。history.newStateJsonがnullでも安全に動作するようcalendarEventToJson()でイベントから直接生成。
+- H-002: Undo/Redo Compensation成功後、Provider IDが変わった可能性に対応するため、最新のcommand.historyでDB再同期を試行。再同期も失敗した場合は不整合としてIllegalStateExceptionを送出。
+- Test Fix: NotificationActionReceiverCompleteTodoテストのactor期待値をNOTIFICATION→SYSTEMへ修正（Actor enumにNOTIFICATIONは存在しない）。
