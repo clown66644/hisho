@@ -161,9 +161,18 @@ class UndoManager(
                         "History DB update failed and compensation returned false"
                     )
                 }
-                throw IllegalStateException(
-                    "History DB update failed; external undo was compensated", e
-                )
+                // Compensation成功: Provider IDが変わった可能性があるため、最新historyでDB再同期を試行
+                try {
+                    val resyncHistory = lastCommand.history.copy(isUndone = false)
+                    historyDao.updateHistory(OperationHistoryEntity.fromDomainModel(resyncHistory))
+                } catch (retryEx: Exception) {
+                    // DB再同期も失敗: 不整合状態
+                    throw IllegalStateException(
+                        "History DB update failed, compensation succeeded but DB re-sync also failed", retryEx
+                    )
+                }
+                // Compensation + DB再同期成功: Undo自体は失敗として返す
+                return@withContext false
             }
         }
         undoStack.removeAt(undoStack.size - 1)
@@ -212,9 +221,17 @@ class UndoManager(
                         "History DB update failed and redo compensation returned false"
                     )
                 }
-                throw IllegalStateException(
-                    "History DB update failed; external redo was compensated", e
-                )
+                // Compensation成功: Provider IDが変わった可能性があるため、最新historyでDB再同期を試行
+                try {
+                    val resyncHistory = nextCommand.history.copy(isUndone = true)
+                    historyDao.updateHistory(OperationHistoryEntity.fromDomainModel(resyncHistory))
+                } catch (retryEx: Exception) {
+                    throw IllegalStateException(
+                        "History DB update failed, redo compensation succeeded but DB re-sync also failed", retryEx
+                    )
+                }
+                // Compensation + DB再同期成功: Redo自体は失敗として返す
+                return@withContext false
             }
         }
         redoStack.removeAt(redoStack.size - 1)

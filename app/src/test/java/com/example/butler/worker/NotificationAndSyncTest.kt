@@ -195,7 +195,7 @@ class NotificationAndSyncTest {
         assertEquals(1, histories.size)
         val history = histories[0]
         assertEquals("COMPLETE_TODO", history.actionType)
-        assertEquals("NOTIFICATION", history.actor)
+        assertEquals("SYSTEM", history.actor)
         assertEquals("test-todo-action-1", history.targetId)
         assertNotNull(history.previousStateJson)
         assertNotNull(history.newStateJson)

@@ -31,17 +31,37 @@ class CreateEventCommand(
             detectedDuplicates = duplicates
             return false
         }
+
+        // Snapshot生成をProvider操作より前に行い、null時も安全に処理する
+        val baseSnapshot = calendarEventToJson(event)
+
         val id = calendarSyncManager.insertEvent(event)
         return if (id != null) {
             generatedId = id
-            val newJson = org.json.JSONObject(history.newStateJson).apply {
+            // Provider IDで更新したsnapshotを履歴に保存
+            val persistedSnapshot = org.json.JSONObject(baseSnapshot).apply {
                 put("id", id)
             }.toString()
-            history = history.copy(targetId = id, newStateJson = newJson)
+            history = history.copy(targetId = id, newStateJson = persistedSnapshot)
             true
         } else {
             false
         }
+    }
+
+    private fun calendarEventToJson(event: CalendarEvent): String {
+        return org.json.JSONObject().apply {
+            put("id", event.id)
+            put("googleEventId", event.googleEventId)
+            put("title", event.title)
+            put("startTime", event.startTime)
+            put("endTime", event.endTime)
+            put("location", event.location)
+            put("isAllDay", event.isAllDay)
+            if (event.calendarId != null) put("calendarId", event.calendarId)
+            if (event.timezone != null) put("timezone", event.timezone)
+            if (event.recurrenceRule != null) put("recurrenceRule", event.recurrenceRule)
+        }.toString()
     }
 
     override suspend fun undo(): Boolean {
