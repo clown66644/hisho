@@ -37,7 +37,18 @@ object CommandResolver {
                 "DELETE_EVENT" -> {
                     val oldJson = JSONObject(history.previousStateJson ?: return null)
                     val deletedEvent = jsonToCalendarEvent(oldJson)
-                    DeleteEventCommand(history, deletedEvent, calendarSyncManager)
+                    val cmd = DeleteEventCommand(history, deletedEvent, calendarSyncManager)
+                    // Undo済みの場合、newStateJsonに復元されたイベントのProvider IDが保存されている
+                    if (history.newStateJson != null && history.isUndone) {
+                        try {
+                            val restoredJson = JSONObject(history.newStateJson)
+                            val restoredId = restoredJson.getString("id")
+                            cmd.restoreRestoredEventId(restoredId)
+                        } catch (_: Exception) {
+                            // newStateJsonの解析失敗は無視（deletedEvent.idにフォールバック）
+                        }
+                    }
+                    cmd
                 }
                 "COMPLETE_TODO" -> {
                     val oldJson = JSONObject(history.previousStateJson ?: return null)

@@ -16,6 +16,9 @@ class UndoManagerTest {
     private class FakeOperationHistoryDao : OperationHistoryDao {
         val db = mutableMapOf<String, OperationHistoryEntity>()
         var shouldFailInsert = false
+        var shouldFailUpdate = false
+        var updateFailCount = 0  // 0=無制限に失敗, >0=指定回数だけ失敗
+        private var updateAttempts = 0
 
         override suspend fun getAllHistories(): List<OperationHistoryEntity> {
             return db.values.sortedBy { it.timestamp }
@@ -36,11 +39,23 @@ class UndoManagerTest {
         }
 
         override suspend fun updateHistory(history: OperationHistoryEntity) {
+            if (shouldFailUpdate) {
+                updateAttempts++
+                if (updateFailCount == 0 || updateAttempts <= updateFailCount) {
+                    throw RuntimeException("Simulated DB update failure")
+                }
+            }
             db[history.id] = history
         }
 
         override suspend fun deleteHistoryById(id: String) {
             db.remove(id)
+        }
+
+        fun resetUpdateFailure() {
+            shouldFailUpdate = false
+            updateFailCount = 0
+            updateAttempts = 0
         }
     }
 
@@ -306,5 +321,101 @@ class UndoManagerTest {
 
         assertEquals(1, restoredCount)
         assertTrue(newUndoManager.canUndo())
+    }
+
+    @Test
+    fun testUndoDbUpdateFailureTriggersCompensationAndResync() = runBlocking {
+        val history = OperationHistory(
+            id = "op-comp-undo-1",
+            actor = Actor.USER,
+            actionType = "CREATE_TODO",
+            targetId = "todo-comp-1"
+        )
+        val command = MockTestCommand(history)
+        undoManager.executeCommand(command)
+
+        // 最初のupdateだけ失敗、再同期(2回目)は成功
+        fakeDao.shouldFailUpdate = true
+        fakeDao.updateFailCount = 1
+
+        val result = undoManager.undoLastCommand()
+        // Compensation redo が実行され、DB再同期成功 → false を返す
+        assertFalse(result)
+        assertTrue(command.isRedone)
+        // スタックは移動していない
+        assertTrue(undoManager.canUndo())
+    }
+
+    @Test
+    fun testRedoDbUpdateFailureTriggersCompensationAndResync() = runBlocking {
+        val history = OperationHistory(
+            id = "op-comp-redo-1",
+            actor = Actor.USER,
+            actionType = "CREATE_TODO",
+            targetId = "todo-comp-2"
+        )
+        val command = MockTestCommand(history)
+        undoManager.executeCommand(command)
+        undoManager.undoLastCommand()
+
+        // 最初のupdateだけ失敗、再同期は成功
+        fakeDao.shouldFailUpdate = true
+        fakeDao.updateFailCount = 1
+
+        val result = undoManager.redoNextCommand()
+        // Compensation undo が実行され、DB再同期成功 → false を返す
+        assertFalse(result)
+        assertTrue(command.isUndone)
+        // スタックは移動していない
+        assertTrue(undoManager.canRedo())
+    }
+
+    @Test
+    fun testUndoCompensationReturnsFalseThrowsException() = runBlocking {
+        val history = OperationHistory(
+            id = "op-comp-false-1",
+            actor = Actor.USER,
+            actionType = "CREATE_TODO",
+            targetId = "todo-comp-3"
+        )
+        // redo が false を返すコマンド
+        val command = MockTestCommand(history, shouldRedoSucceed = false)
+        undoManager.executeCommand(command)
+
+        // update を無制限に失敗させる
+        fakeDao.shouldFailUpdate = true
+        fakeDao.updateFailCount = 0
+
+        var caughtException: IllegalStateException? = null
+        try {
+            undoManager.undoLastCommand()
+        } catch (e: IllegalStateException) {
+            caughtException = e
+        }
+        assertTrue(caughtException != null)
+        assertTrue(caughtException!!.message!!.contains("compensation returned false"))
+    }
+
+    @Test
+    fun testExecuteDbInsertFailureWithCompensationFailureThrows() = runBlocking {
+        val history = OperationHistory(
+            id = "op-comp-exec-fail-1",
+            actor = Actor.USER,
+            actionType = "CREATE_TODO",
+            targetId = "todo-comp-4"
+        )
+        // undo が false を返すコマンド（compensation失敗）
+        val command = MockTestCommand(history, shouldUndoSucceed = false)
+
+        fakeDao.shouldFailInsert = true
+
+        var caughtException: IllegalStateException? = null
+        try {
+            undoManager.executeCommand(command)
+        } catch (e: IllegalStateException) {
+            caughtException = e
+        }
+        assertTrue(caughtException != null)
+        assertTrue(caughtException!!.message!!.contains("compensation returned false"))
     }
 }

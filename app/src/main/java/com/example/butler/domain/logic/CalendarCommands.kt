@@ -90,7 +90,7 @@ class UpdateEventCommand(
 }
 
 class DeleteEventCommand(
-    override val history: OperationHistory,
+    override var history: OperationHistory,
     val deletedEvent: CalendarEvent,
     private val calendarSyncManager: CalendarSyncManager
 ) : Command {
@@ -99,6 +99,13 @@ class DeleteEventCommand(
         private set
     var failedDueToRecurrence: Boolean = false
         private set
+
+    /**
+     * 履歴復元時にCommandResolverから呼び出し、Undo済みのProvider IDを復元する
+     */
+    fun restoreRestoredEventId(id: String) {
+        restoredEventId = id
+    }
 
     override suspend fun execute(): Boolean {
         if (!deletedEvent.recurrenceRule.isNullOrEmpty()) {
@@ -112,6 +119,11 @@ class DeleteEventCommand(
         val id = calendarSyncManager.insertEvent(deletedEvent, deletedEvent.calendarId)
         return if (id != null) {
             restoredEventId = id
+            // Provider IDが変わった場合でも永続履歴に反映する
+            val restoredSnapshot = calendarEventToJson(deletedEvent.copy(id = id))
+            history = history.copy(
+                newStateJson = restoredSnapshot
+            )
             true
         } else {
             false
@@ -123,7 +135,24 @@ class DeleteEventCommand(
         val success = calendarSyncManager.deleteEvent(targetId)
         if (success) {
             restoredEventId = null
+            // 削除成功: newStateJsonをクリアして削除済み状態を永続化
+            history = history.copy(newStateJson = null)
         }
         return success
+    }
+
+    private fun calendarEventToJson(event: CalendarEvent): String {
+        return org.json.JSONObject().apply {
+            put("id", event.id)
+            put("googleEventId", event.googleEventId)
+            put("title", event.title)
+            put("startTime", event.startTime)
+            put("endTime", event.endTime)
+            put("location", event.location)
+            put("isAllDay", event.isAllDay)
+            if (event.calendarId != null) put("calendarId", event.calendarId)
+            if (event.timezone != null) put("timezone", event.timezone)
+            if (event.recurrenceRule != null) put("recurrenceRule", event.recurrenceRule)
+        }.toString()
     }
 }
